@@ -1,0 +1,16 @@
+# Build output
+/release/*
+/iec104ctl
+/bin/*
+
+# Editor settings
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Coverage reports
+coverage.*
+
+# Cursor settings
+.cursor/
