@@ -155,6 +155,8 @@ func Run(ctx context.Context, cfg *config.ServerConfig, log func(types.ServerEve
 	}
 	st.event(types.ServerEvent{Event: "stopping", Detail: fmt.Sprintf("%d connections", st.Sessions())})
 	_ = st.Close()
-	<-served
+	if err := <-served; err != nil {
+		return errs.New(errs.KindTransport, errs.CodeListenFailed, fmt.Sprintf("server stopped: %v", err), err)
+	}
 	return nil
 }
