@@ -90,6 +90,9 @@ func Monitor(ctx context.Context, cfg *config.MonitorConfig, status io.Writer, e
 		return sum, err
 	}
 	filter.CommonAddr, filter.HasCommonAddr = ca, hasCA
+	if hasCA {
+		cfg.CommonAddrHint = uint16(ca)
+	}
 
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()

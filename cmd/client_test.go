@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/otfabric/go-iec104/asdu"
 	"github.com/otfabric/iec104ctl/internal/station"
@@ -267,7 +268,14 @@ func TestCommand(t *testing.T) {
 			}
 			return n
 		}
+		// The station logs a command when it has handled it, which can be
+		// after the run that sent it has ended: count from a quiet station.
 		before := commands()
+		for quiet := time.Now(); time.Since(quiet) < 100*time.Millisecond; time.Sleep(5 * time.Millisecond) {
+			if n := commands(); n != before {
+				before, quiet = n, time.Now()
+			}
+		}
 		for _, args := range [][]string{
 			{"--type", "single", "--ioa", "5000", "--value", "maybe"},
 			{"--type", "double", "--ioa", "5001", "--value", "2"},

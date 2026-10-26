@@ -25,7 +25,11 @@ function and close the connection again.
 Every command takes the station as --url (tcp://host[:port] or tls://host[:port]) or as
 --ip with --port, and the common address of the station as --ca. Protocol parameters
 (--k, --w, --t0 to --t3) and the ASDU field sizes (--cot-size, --ca-size, --ioa-size)
-default to the values of IEC 60870-5-104 and must match the station.`,
+default to the values of IEC 60870-5-104 and must match the station.
+
+With --secure, every command runs the application-layer security of IEC 62351-5 (the
+A-Profile of IEC TS 60870-5-7) after STARTDT: a Station Association with --security-cert,
+--security-key and --security-trust, then every ASDU as Secure Data.`,
 	}
 	cmd.AddCommand(
 		newInterrogateCmd(),
@@ -45,7 +49,9 @@ default to the values of IEC 60870-5-104 and must match the station.`,
 
 // connDefaults are the defaults every client command starts from.
 func connDefaults() config.ConnConfig {
-	return config.ConnConfig{Port: config.DefaultPort}
+	c := config.ConnConfig{Port: config.DefaultPort}
+	c.AssociationID = 1
+	return c
 }
 
 func stationDefaults() config.StationConfig {
@@ -67,10 +73,14 @@ func connCompletion(cmd *cobra.Command) {
 	if cmd.Flags().Lookup("timezone") != nil {
 		_ = cli.RegisterEnumFlagCompletion(cmd, "timezone", []string{"utc", "local"})
 	}
-	for _, f := range []string{"tls-ca", "tls-cert", "tls-key"} {
+	for _, f := range []string{"tls-ca", "tls-cert", "tls-key", "security-cert", "security-key", "security-trust"} {
 		if cmd.Flags().Lookup(f) != nil {
 			_ = cmd.MarkFlagFilename(f, "pem", "crt", "cer", "key")
 		}
+	}
+	if cmd.Flags().Lookup("mal") != nil {
+		_ = cli.RegisterEnumFlagCompletion(cmd, "mal", iec.MACNames())
+		_ = cli.RegisterEnumFlagCompletion(cmd, "dpa", iec.DPANames())
 	}
 }
 

@@ -43,7 +43,7 @@ func Interrogate(ctx context.Context, cfg *config.InterrogateConfig, trace io.Wr
 	if err != nil {
 		return nil, err
 	}
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func CheckCounters(cfg *config.CountersConfig) error {
 
 // Counters runs a counter interrogation and returns the integrated totals.
 func Counters(ctx context.Context, cfg *config.CountersConfig, trace io.Writer) (*types.InterrogateResult, error) {
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func Read(ctx context.Context, cfg *config.ReadConfig, trace io.Writer) (*types.
 	if err != nil {
 		return nil, err
 	}
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}

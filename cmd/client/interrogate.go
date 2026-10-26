@@ -41,6 +41,9 @@ A large station can take longer than the default 10 s: raise --timeout.`,
 
   # Over TLS, verifying the station with a private CA
   iec104ctl client interrogate --url tls://rtu.example.net --tls-ca ca.pem
+
+  # With the application-layer security of IEC 62351-5, data encrypted with AES-256-GCM
+  iec104ctl client interrogate --ip 192.168.1.10 --secure --security-cert scada.pem --security-key scada.key --security-trust ca.pem --dpa aes-256-gcm
 `,
 	}
 	cfg := config.InterrogateConfig{StationConfig: stationDefaults(), OutputFormat: string(format.FormatText)}

@@ -39,7 +39,7 @@ func CheckClock(cfg *config.ClockConfig) error {
 
 // Clock sets the clock of a station (C_CS_NA_1).
 func Clock(ctx context.Context, cfg *config.ClockConfig, trace io.Writer) (*types.ConfirmedResult, error) {
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func CheckReset(cfg *config.ResetConfig) error {
 
 // Reset sends a reset process command (C_RP_NA_1).
 func Reset(ctx context.Context, cfg *config.ResetConfig, trace io.Writer) (*types.ConfirmedResult, error) {
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func CheckPing(cfg *config.PingConfig) error {
 // that ends the connection ends the command after it has been reported.
 func Ping(ctx context.Context, cfg *config.PingConfig, trace io.Writer, emit func(*types.PingSample) error) (types.PingSummary, error) {
 	sum := types.PingSummary{MethodName: cfg.Method}
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return sum, err
 	}

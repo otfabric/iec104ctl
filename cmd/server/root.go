@@ -13,6 +13,7 @@ import (
 	"github.com/otfabric/iec104ctl/internal/config"
 	"github.com/otfabric/iec104ctl/internal/errs"
 	"github.com/otfabric/iec104ctl/internal/format"
+	"github.com/otfabric/iec104ctl/internal/iec"
 	"github.com/otfabric/iec104ctl/internal/runner"
 	"github.com/otfabric/iec104ctl/internal/station"
 	"github.com/otfabric/iec104ctl/internal/types"
@@ -59,6 +60,11 @@ Every event (connections, requests, commands, file transfers) is written to stdo
 happens: one line with --format text, one JSON object per line with --format json, or one
 table row with --format table. With --debug every frame is traced to stderr.
 
+With --secure the station runs the application-layer security of IEC 62351-5 (the
+A-Profile of IEC TS 60870-5-7): every controlling station must associate with a
+certificate --security-trust accepts, every ASDU travels as Secure Data, and with --roles
+a request the roles do not permit is refused with cause 17 (not authorized).
+
 The server runs until interrupted (Ctrl-C), or for --duration seconds. It listens on all
 interfaces by default and accepts any client: use --listen and --allow to restrict it.`,
 		Example: `
@@ -71,6 +77,9 @@ interfaces by default and accepts any client: use --listen and --allow to restri
   # TLS, clients must present a certificate of this CA
   iec104ctl server start --config station.yaml --tls-cert server.pem --tls-key server.key --tls-client-ca ca.pem
 
+  # IEC 62351-5 application-layer security; controlling stations may look, not operate
+  iec104ctl server start --config station.yaml --secure --security-cert station.pem --security-key station.key --security-trust ca.pem --roles viewer
+
   # Only two front ends may connect; log events as JSON Lines
   iec104ctl server start --config station.yaml --allow 10.0.0.5,10.0.0.6 --format json
 
@@ -79,9 +88,14 @@ interfaces by default and accepts any client: use --listen and --allow to restri
 `,
 	}
 	cfg := config.ServerConfig{OutputFormat: string(format.FormatText)}
+	cfg.AssociationID = 1
 	runner.RegisterCommandCfg(cmd, &cfg, func(c *cobra.Command) {
 		_ = c.MarkFlagFilename("config", "yaml", "yml", "json")
 		_ = cli.RegisterEnumFlagCompletion(c, "timezone", []string{"utc", "local"})
+		for _, f := range []string{"tls-cert", "tls-key", "tls-client-ca", "security-cert", "security-key", "security-trust"} {
+			_ = c.MarkFlagFilename(f, "pem", "crt", "cer", "key")
+		}
+		_ = cli.RegisterEnumFlagCompletion(c, "roles", iec.RoleNames())
 	})
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		cfg.Debug = cli.Debug(cmd)

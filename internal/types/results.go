@@ -495,7 +495,7 @@ type ServerEvent struct {
 	Timestamp string `json:"timestamp"`
 	// Event is "listening", "connected", "started", "stopped", "disconnected", "interrogation",
 	// "counter-interrogation", "read", "command", "clock", "reset", "test", "file-sent",
-	// "file-received", "directory", "refused" or "stopping".
+	// "file-received", "directory", "refused", "secured", "security-refused" or "stopping".
 	Event  string `json:"event"`
 	Remote string `json:"remote,omitempty"`
 	// CommonAddr and IOA name what the event is about, where it concerns an object.

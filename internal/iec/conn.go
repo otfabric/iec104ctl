@@ -16,6 +16,7 @@ import (
 	"github.com/otfabric/go-iec104/apci"
 	"github.com/otfabric/go-iec104/asdu"
 	"github.com/otfabric/go-iec104/client"
+	"github.com/otfabric/go-iec104/sec"
 	"github.com/otfabric/iec104ctl/internal/config"
 	"github.com/otfabric/iec104ctl/internal/errs"
 )
@@ -132,6 +133,9 @@ type Session struct {
 	Target  config.Target
 	Params  asdu.Params
 	Timeout time.Duration
+	// Security is the endpoint of the application-layer security; nil without --secure.
+	Security *sec.Endpoint
+	events   *secEvents
 }
 
 // Validate checks everything about cfg that can be checked without connecting.
@@ -151,7 +155,21 @@ func Validate(cfg *config.ConnConfig) error {
 			return err
 		}
 	}
-	return nil
+	return validateSecurity(cfg)
+}
+
+// validateSecurity checks the security flags and that an endpoint can be made of them.
+func validateSecurity(cfg *config.ConnConfig) error {
+	s, err := ClientSecurity(cfg.ClientSecurityConfig)
+	if s == nil || err != nil {
+		return err
+	}
+	ap, err := ASDUParams(cfg.LinkConfig)
+	if err != nil {
+		return err
+	}
+	_, err = clientEndpoint(s, ap, cfg.CommonAddrHint, cfg.Originator, nil)
+	return err
 }
 
 // Open prepares a client for the station of cfg without connecting. trace receives the
@@ -183,14 +201,29 @@ func Open(cfg *config.ConnConfig, trace io.Writer, extra ...client.Option) (*Ses
 		}
 		opts = append(opts, client.WithTLS(tc))
 	}
+	var tracer *Tracer
 	if cfg.Debug && trace != nil {
-		opts = append(opts, client.WithMetrics(&Tracer{W: trace, Params: ap}))
+		tracer = &Tracer{W: trace, Params: ap}
+		opts = append(opts, client.WithMetrics(tracer))
+	}
+	s := &Session{Target: target, Params: ap, Timeout: timeout}
+	sc, err := ClientSecurity(cfg.ClientSecurityConfig)
+	if err != nil {
+		return nil, errs.WrapValidation(err)
+	}
+	if sc != nil {
+		s.events = &secEvents{tracer: tracer}
+		if s.Security, err = clientEndpoint(sc, ap, cfg.CommonAddrHint, cfg.Originator, s.events.on); err != nil {
+			return nil, errs.WrapValidation(err)
+		}
+		opts = append(opts, client.WithSecurity(s.Security))
 	}
 	c, err := client.New(target.Addr(), append(opts, extra...)...)
 	if err != nil {
 		return nil, errs.WrapValidation(err)
 	}
-	return &Session{Client: c, Target: target, Params: ap, Timeout: timeout}, nil
+	s.Client = c
+	return s, nil
 }
 
 // Dial is [Open] followed by connecting and starting data transfer, bounded by the timeout
@@ -204,7 +237,21 @@ func Dial(ctx context.Context, cfg *config.ConnConfig, trace io.Writer, extra ..
 	defer cancel()
 	if err := s.Connect(cctx); err != nil {
 		_ = s.Close()
+		if s.Security != nil {
+			if serr := securityFailed(err, s.Security, s.events); serr != nil {
+				return nil, serr
+			}
+		}
 		return nil, WrapError(err)
+	}
+	if s.Security != nil && s.events.tracer != nil {
+		st := s.Security.Status()
+		remote := ""
+		if st.Remote != nil {
+			remote = fmt.Sprintf(" with %q", st.Remote.Subject.CommonName)
+		}
+		s.events.tracer.line("--", nil, fmt.Sprintf("security: secure session%s, AIM %d, AIS %d, MAC %s, data %s",
+			remote, st.AIM, st.AIS, st.MAC, st.Data))
 	}
 	return s, nil
 }

@@ -38,6 +38,8 @@ func WrapError(err error) error {
 		return errs.New(errs.KindInternal, errs.CodeContextCanceled, "interrupted", err)
 	case errors.As(err, &certErr), errors.As(err, &unknown), errors.As(err, &hostname), errors.As(err, &record):
 		return errs.New(errs.KindTransport, errs.CodeTransportTLSFailed, fmt.Sprintf("TLS error: %v", err), err)
+	case isSecError(err):
+		return errs.New(errs.KindTransport, errs.CodeSecurityFailed, fmt.Sprintf("security error: %v", err), err)
 	case errors.Is(err, iec104.ErrConnectFailed):
 		if isTimeout(err) {
 			return errs.New(errs.KindTransport, errs.CodeTransportConnectFailed, fmt.Sprintf("connection error: timed out: %v", err), err)

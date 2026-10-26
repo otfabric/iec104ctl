@@ -10,8 +10,12 @@ const (
 
 	CodeTransportConnectFailed = "transport_connect_failed"
 	CodeTransportTLSFailed     = "transport_tls_failed"
-	CodeConnectionLost         = "connection_lost"
-	CodeListenFailed           = "listen_failed"
+	// The application-layer security of IEC 62351-5 could not be established: a refused
+	// certificate, an algorithm not supported, a MAC that did not verify, or no answer to
+	// the key management.
+	CodeSecurityFailed = "security_failed"
+	CodeConnectionLost = "connection_lost"
+	CodeListenFailed   = "listen_failed"
 
 	// The station did not answer a request in time.
 	CodeRequestTimeout = "request_timeout"
