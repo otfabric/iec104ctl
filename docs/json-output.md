@@ -47,7 +47,7 @@ One information object as a station reported it. Used by `client interrogate`, `
 | `client file get`, `client file put` | `target`, `ca`, `direction` (`"download"` or `"upload"`), `ioa`, `name`, `length`, `sections` (upload), `sha256`, `path`, `duration_ms` |
 | `client types` | `count`, `types`: `id`, `name`, `description`, `direction` (`"monitor"` or `"control"`), `time_tag`, `decoded` |
 | `discover` | `subnets`, `ports`, `hosts` (addresses probed), `found`, `duration_ms`, `devices`: `ip`, `port`, `status` (`"iec104"` or `"open"`), `rtt_ms` |
-| `server start` (stream) | one event per line (JSON Lines): `timestamp`, `event`, and where they apply `remote`, `ca`, `ioa`, `type`, `value`, `detail`. Events: `listening`, `connected`, `started`, `stopped`, `disconnected`, `refused`, `interrogation`, `counter-interrogation`, `read`, `command`, `clock`, `reset`, `test`, `directory`, `file-sent`, `file-received`, `stopping` |
+| `server start` (stream) | one event per line (JSON Lines): `timestamp`, `event`, and where they apply `remote`, `ca`, `ioa`, `type`, `value`, `detail`. Events: `listening`, `connected`, `started`, `stopped`, `disconnected`, `refused`, `secured`, `security-refused`, `interrogation`, `counter-interrogation`, `read`, `command`, `clock`, `reset`, `test`, `directory`, `file-sent`, `file-received`, `stopping`. With `--secure`: `secured` when a controlling station has associated (`detail`: its AIM, certificate subject, the AIS and MAC algorithm), `security-refused` when an association is refused (`detail`: the AIM, the security event and why), and `refused` for a request the roles do not permit; these carry no `remote` |
 
 ## Streams and stderr
 

@@ -11,6 +11,31 @@ type TLSConfig struct {
 	Insecure   bool   `env:"IEC104CTL_TLS_INSECURE" desc:"Do not verify the station certificate (testing only)" flag:"tls-insecure"`
 }
 
+// SecurityConfig holds the application-layer security of IEC 62351-5, the A-Profile of
+// IEC TS 60870-5-7, that client and server share: the station's certificate and key, and
+// the remote stations it trusts. Without --secure every other security flag is invalid.
+type SecurityConfig struct {
+	Secure        bool   `env:"IEC104CTL_SECURE" desc:"Run the application-layer security of IEC 62351-5 (A-Profile of IEC TS 60870-5-7): a Station Association with certificates, then every ASDU as Secure Data" flag:"secure"`
+	SecurityCert  string `env:"IEC104CTL_SECURITY_CERT" desc:"PEM file with the own station certificate (P-256, or X25519 signed by an authority); needs --secure" flag:"security-cert"`
+	SecurityKey   string `env:"IEC104CTL_SECURITY_KEY" desc:"PEM file with the private key of --security-cert (PKCS #8 or SEC 1); needs --secure" flag:"security-key"`
+	SecurityTrust string `env:"IEC104CTL_SECURITY_TRUST" desc:"PEM file with the certificates of the remote stations to trust: a CA certificate is an authority (the station certificates it signed are accepted), any other is a pinned self-signed station certificate; needs --secure" flag:"security-trust"`
+}
+
+// ClientSecurityConfig is the security of a controlling station (every client command).
+type ClientSecurityConfig struct {
+	SecurityConfig
+	AssociationID uint16 `env:"IEC104CTL_ASSOCIATION_ID" desc:"AIM: the association ID of this controlling station, 1-65535; needs --secure" flag:"association-id"`
+	MAL           string `env:"IEC104CTL_MAL" desc:"MAC algorithm the controlling station selects, by code or name: 4 or hmac-sha-256 (default), 3 or hmac-sha-256/8, 8 or hmac-sha3-256, 7 or hmac-sha3-256/8; needs --secure" flag:"mal"`
+	DPA           string `env:"IEC104CTL_DPA" desc:"Data protection algorithm of Secure Data, by code or name: a MAC algorithm as for --mal, or 11 or aes-256-gcm to encrypt as well (default: --mal); needs --secure" flag:"dpa"`
+}
+
+// ServerSecurityConfig is the security of the simulated controlled station.
+type ServerSecurityConfig struct {
+	SecurityConfig
+	AssociationID uint16   `env:"IEC104CTL_ASSOCIATION_ID" desc:"AIS: the association ID of this controlled station, 1-65535; needs --secure" flag:"association-id"`
+	Roles         []string `env:"IEC104CTL_ROLES" desc:"Roles every controlling station has: viewer, operator, engineer, installer, secadm, secaud, rbacmnt (default: no access control, everything is permitted); needs --secure" flag:"roles"`
+}
+
 // LinkConfig holds the protocol parameters of IEC 60870-5-104 clause 9 and the field sizes
 // of the ASDU. Zero selects the standard value. Both ends of a connection must agree.
 type LinkConfig struct {
@@ -30,6 +55,7 @@ type LinkConfig struct {
 // ConnConfig is what every client command needs to reach a station.
 type ConnConfig struct {
 	TLSConfig
+	ClientSecurityConfig
 	LinkConfig
 	URL        string `env:"IEC104CTL_URL" desc:"Station URL: tcp://host[:port] or tls://host[:port] (ports default to 2404 and 19998); mutually exclusive with --ip/--port" flag:"url"`
 	IP         string `env:"IEC104CTL_IP" desc:"Station IP address or host name (used when --url is not set)" flag:"ip"`
@@ -37,6 +63,9 @@ type ConnConfig struct {
 	Originator uint8  `env:"IEC104CTL_ORIGINATOR" desc:"Originator address sent with every request (0 = not used)" flag:"originator"`
 	Timeout    uint32 `env:"IEC104CTL_TIMEOUT" desc:"Timeout in milliseconds for connecting and for each request (0 = 10000)" flag:"timeout"`
 	Debug      bool   // set from global --debug (root persistent flag)
+	// CommonAddrHint is the common address of the station a command addresses, when it
+	// addresses one; it fills the data unit identifier of the security messages.
+	CommonAddrHint uint16
 }
 
 func (c *ConnConfig) wantsTLS() bool {
@@ -48,6 +77,13 @@ func (c *ConnConfig) wantsTLS() bool {
 type StationConfig struct {
 	ConnConfig
 	CommonAddr uint16 `env:"IEC104CTL_CA" desc:"Common address of the station (ASDU address)" flag:"ca"`
+}
+
+// Conn returns the connection of c, with the common address of the station as the hint
+// for the security messages.
+func (c *StationConfig) Conn() *ConnConfig {
+	c.CommonAddrHint = c.CommonAddr
+	return &c.ConnConfig
 }
 
 // InterrogateConfig drives `client interrogate`.
@@ -180,6 +216,7 @@ type DiscoverConfig struct {
 // ServerConfig drives `server start`.
 type ServerConfig struct {
 	LinkConfig
+	ServerSecurityConfig
 	Config       string   `env:"IEC104CTL_CONFIG" desc:"Station model file (YAML or JSON); without it a built-in demo station is served" flag:"config"`
 	Listen       string   `env:"IEC104CTL_LISTEN" desc:"Address to listen on" flag:"listen"`
 	Port         uint16   `env:"IEC104CTL_PORT" desc:"TCP port to listen on (0 = 2404, or 19998 with TLS)" flag:"port"`

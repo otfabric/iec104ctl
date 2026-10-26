@@ -15,6 +15,7 @@ import (
 	iec104 "github.com/otfabric/go-iec104"
 	"github.com/otfabric/go-iec104/apci"
 	"github.com/otfabric/go-iec104/asdu"
+	"github.com/otfabric/go-iec104/sec"
 	"github.com/otfabric/iec104ctl/internal/config"
 	"github.com/otfabric/iec104ctl/internal/errs"
 	"github.com/otfabric/iec104ctl/internal/types"
@@ -193,6 +194,10 @@ func TestErrorClassification(t *testing.T) {
 		{fmt.Errorf("%w: %w", iec104.ErrConnectFailed, x509.UnknownAuthorityError{}), errs.KindTransport, errs.CodeTransportTLSFailed, 4},
 		{fmt.Errorf("x: %w", x509.HostnameError{Certificate: &x509.Certificate{}, Host: "h"}), errs.KindTransport, errs.CodeTransportTLSFailed, 4},
 		{tls.RecordHeaderError{Msg: "not TLS"}, errs.KindTransport, errs.CodeTransportTLSFailed, 4},
+		{fmt.Errorf("%w: %w", iec104.ErrConnectFailed, sec.ErrCertificate), errs.KindTransport, errs.CodeSecurityFailed, 4},
+		{fmt.Errorf("%w: %w", iec104.ErrConnectFailed, sec.ErrProcedure), errs.KindTransport, errs.CodeSecurityFailed, 4},
+		{sec.ErrAlgorithm, errs.KindTransport, errs.CodeSecurityFailed, 4},
+		{sec.ErrAuthentication, errs.KindTransport, errs.CodeSecurityFailed, 4},
 		{iec104.ErrTimeout, errs.KindTimeout, errs.CodeLinkTimeout, 5},
 		{fmt.Errorf("waiting: %w", context.DeadlineExceeded), errs.KindTimeout, errs.CodeRequestTimeout, 5},
 		{iec104.ErrConnectionLost, errs.KindTransport, errs.CodeConnectionLost, 4},

@@ -20,6 +20,7 @@ import (
 	"github.com/otfabric/go-iec104/apci"
 	"github.com/otfabric/go-iec104/asdu"
 	"github.com/otfabric/go-iec104/server"
+	"github.com/otfabric/iec104ctl/internal/iec"
 	"github.com/otfabric/iec104ctl/internal/types"
 )
 
@@ -39,6 +40,10 @@ type Options struct {
 	Metrics iec104.Metrics
 	// Now is the clock of the station; time.Now when nil.
 	Now func() time.Time
+	// Security, when not nil, applies the application-layer security of IEC 62351-5:
+	// every controlling station associates with this identity and trust and has these
+	// roles.
+	Security *iec.Security
 }
 
 type point struct {
@@ -178,6 +183,14 @@ func New(m *Model, opts Options) (*Station, error) {
 	if opts.Metrics != nil {
 		sopts = append(sopts, server.WithMetrics(opts.Metrics))
 	}
+	if opts.Security != nil {
+		// Fail now, not at the first controlling station, on a configuration package sec
+		// does not accept.
+		if _, err := st.endpoint("default", 1); err != nil {
+			return nil, fmt.Errorf("security: %w", err)
+		}
+		sopts = append(sopts, server.WithSecurity(st.newEndpoint))
+	}
 	srv, err := server.New(mux, sopts...)
 	if err != nil {
 		return nil, err
@@ -209,8 +222,12 @@ func (st *Station) Serve(ln net.Listener) error {
 	st.stop = cancel
 	st.mu.Unlock()
 	st.simulate(ctx)
-	st.event(types.ServerEvent{Event: "listening", Detail: fmt.Sprintf("%s, station %d (%s), %d points, %d commands, %d files",
-		ln.Addr(), st.ca, st.name(), len(st.points), len(st.commands), len(st.files))})
+	detail := fmt.Sprintf("%s, station %d (%s), %d points, %d commands, %d files",
+		ln.Addr(), st.ca, st.name(), len(st.points), len(st.commands), len(st.files))
+	if s := st.opts.Security; s != nil {
+		detail += fmt.Sprintf(", secure (AIS %d)", s.ID)
+	}
+	st.event(types.ServerEvent{Event: "listening", Detail: detail})
 	err := st.srv.Serve(ln)
 	cancel()
 	st.wg.Wait()

@@ -138,10 +138,11 @@ They combine well: use iec104ctl to drive and check a station from the command l
 | Files            | File transfer of IEC 60870-5-101/104: list the directory, fetch a file, deliver a file, with checksums verified.          |
 | Types            | List the type identifications iec104ctl knows, with direction and description.                                            |
 | Discover         | Find IEC 104 stations on subnets with a non-intrusive probe (one test frame; data transfer is not started).               |
-| Server           | A simulated controlled station from a YAML or JSON model: interrogations, read, counters, commands with select-before-operate, clock, reset, files and uploads, simulated values, queued events, redundant connections, TLS, allow-list. |
+| Server           | A simulated controlled station from a YAML or JSON model: interrogations, read, counters, commands with select-before-operate, clock, reset, files and uploads, simulated values, queued events, redundant connections, TLS, IEC 62351-5 security with roles, allow-list. |
 | Transports       | TCP, and TLS (IEC 62351-3) with server verification and client certificates, selected with **`--url`**. See [Connecting to a station](#connecting-to-a-station). |
+| Security         | The application-layer security of IEC 62351-5 (A-Profile of IEC TS 60870-5-7) on every client command and on the simulated station: **`--secure`**, certificates trusted by authority or pinned, HMAC-SHA-256 or AES-256-GCM, role-based access control at the station. See [Connecting to a station](#connecting-to-a-station). |
 | Protocol parameters | `k`, `w`, `t0`-`t3`, originator address, and the ASDU field sizes of IEC 60870-5-101 gateways (cause, common address, object address). |
-| Type coverage    | Every monitoring type of IEC 60870-5-104 including the CP24Time2a and CP56Time2a variants, protection events, packed single points, parameters and file transfer; the secure authentication types of IEC 62351-5 are recognized by name. |
+| Type coverage    | Every monitoring type of IEC 60870-5-104 including the CP24Time2a and CP56Time2a variants, protection events, packed single points, parameters and file transfer, and the security types of IEC 62351-5. |
 | `--format`       | Every command that prints a result accepts **`--format text\|json\|table`** (or **`IEC104CTL_OUTPUT_FORMAT`**); streams write JSON Lines. |
 | `--debug`        | Trace every frame sent and received, decoded, to stderr.                                                                  |
 | Completion       | Shell completion for bash, zsh, fish and PowerShell; flags with a fixed set of values (**`--format`**, **`--type`**, **`--mode`**, **`--method`**, …) complete to those values. |
@@ -413,6 +414,51 @@ Every `iec104ctl client` command takes the station as a URL, or as an address an
 ```console
 iec104ctl client interrogate --url tls://rtu.example.net --tls-ca ca.pem --tls-cert scada.pem --tls-key scada.key
 ```
+
+**Application-layer security (IEC 62351-5)**
+
+`--secure` runs the A-Profile of IEC 62351-5, as IEC TS 60870-5-7 maps it onto IEC 104. After STARTDT the client and the station first agree on keys in a Station Association authenticated with their certificates, then on session keys; from then on every ASDU travels as Secure Data (`S_SD_NA_1`), authenticated with a truncated HMAC, or encrypted and authenticated with AES-256-GCM, and numbered against replay. The command starts only once the session is secure. It works over TCP and over TLS.
+
+| Flag | Meaning |
+|---|---|
+| `--secure` | Run the A-Profile. Every other flag of this table is invalid without it, and `--secure` needs the next three |
+| `--security-cert` | PEM file with the own station certificate: P-256, or X25519 signed by an authority |
+| `--security-key` | PEM file with its private key (PKCS #8, or SEC 1 for P-256) |
+| `--security-trust` | PEM file with one or more certificates of the stations to trust. A CA certificate (basic constraints CA:TRUE) is an **authority**: every station certificate it signed is accepted. Any other certificate is **pinned**: that station's self-signed certificate is accepted, by its fingerprint |
+| `--association-id` | The AIM, this controlling station's half of the association ID, 1-65535 (default 1) |
+| `--mal` | MAC algorithm, by code or name: `4` / `hmac-sha-256` (default), `3` / `hmac-sha-256/8`, `8` / `hmac-sha3-256`, `7` / `hmac-sha3-256/8` |
+| `--dpa` | Data protection algorithm, by code or name: a MAC algorithm as for `--mal`, or `11` / `aes-256-gcm` to encrypt as well (default: `--mal`) |
+
+Pinned self-signed certificates, one per station (only P-256 keys can sign their own certificate):
+
+```console
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 365 \
+  -keyout station.key -out station.pem -subj "/CN=station 1" -addext basicConstraints=critical,CA:FALSE
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 365 \
+  -keyout scada.key -out scada.pem -subj "/CN=scada" -addext basicConstraints=critical,CA:FALSE
+
+# Each side trusts the other's certificate
+iec104ctl server start --secure --security-cert station.pem --security-key station.key --security-trust scada.pem
+iec104ctl client interrogate --ip 127.0.0.1 --secure --security-cert scada.pem --security-key scada.key --security-trust station.pem
+```
+
+A plant authority that signs the station certificates, so that every side trusts the authority alone:
+
+```console
+openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
+  -keyout ca.key -out ca.pem -subj "/CN=Plant authority" \
+  -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign
+printf 'basicConstraints=critical,CA:FALSE\n' > station.ext
+for n in station scada; do
+  openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -keyout $n.key -out $n.csr -subj "/CN=$n"
+  openssl x509 -req -in $n.csr -CA ca.pem -CAkey ca.key -CAcreateserial -days 365 -out $n.pem -extfile station.ext
+done
+
+iec104ctl server start --secure --security-cert station.pem --security-key station.key --security-trust ca.pem --roles viewer
+iec104ctl client interrogate --ip 127.0.0.1 --secure --security-cert scada.pem --security-key scada.key --security-trust ca.pem --dpa aes-256-gcm
+```
+
+A refused certificate, an algorithm the station does not accept, or no answer to the key management ends the command with exit code 4 and the error code `security_failed`, before anything else is sent. A request the station's roles do not permit is refused with cause 17 (`not-authorized`), exit code 6. A client without `--secure` gets no answer from a secure station (exit code 5). With `--debug` the security events (`STAS_PROC_SUCC`, `NODE_NOT_AUTR`, …) and the algorithms of the session are traced with the frames.
 
 **Protocol parameters**
 
@@ -703,6 +749,9 @@ iec104ctl server start --config station.yaml --listen 127.0.0.1 --port 12404 --f
 
 # With TLS, and only for two front ends
 iec104ctl server start --config station.yaml --tls-cert server.pem --tls-key server.key --tls-client-ca ca.pem --allow 10.0.0.5,10.0.0.6
+
+# With the application-layer security of IEC 62351-5; controlling stations may look, not operate
+iec104ctl server start --config station.yaml --secure --security-cert station.pem --security-key station.key --security-trust ca.pem --roles viewer
 ```
 
 The station is described by a model: its common address, its points with their initial values, its commands and its files.
@@ -754,12 +803,17 @@ Every event is written to stdout as it happens:
 2026-10-10T09:15:17.666Z  disconnected           127.0.0.1:52491  connection lost: closed by peer
 ```
 
+With `--secure` the station also logs `secured` when a controlling station has associated, `security-refused` when an association is refused (an untrusted certificate, an algorithm it does not accept), and `refused` for a request its roles do not permit.
+
 | Flag | Meaning |
 |---|---|
 | `--config` | The model file (YAML or JSON). Without it the built-in demo station is served |
 | `--listen`, `--port` | Address and port to listen on. All interfaces and 2404 by default (19998 with TLS) |
 | `--tls-cert`, `--tls-key` | Serve TLS with this certificate |
 | `--tls-client-ca` | Require a client certificate of this CA (mutual TLS) |
+| `--secure`, `--security-cert`, `--security-key`, `--security-trust` | The application-layer security of IEC 62351-5, as for the client: every controlling station must associate with a certificate `--security-trust` accepts, and every ASDU travels as Secure Data |
+| `--association-id` | The AIS, the station's half of the association ID (default 1). Every controlling station (AIM) gets its own association |
+| `--roles` | The roles every controlling station has: `viewer`, `operator`, `engineer`, `installer`, `secadm`, `secaud`, `rbacmnt`. A request no role permits is refused with cause 17. Without it there is no access control |
 | `--allow` | Only accept clients from these addresses or CIDR prefixes |
 | `--max-sessions` | Maximum number of simultaneous connections |
 | `--duration` | Stop after this many seconds, for use in test pipelines |
@@ -787,6 +841,7 @@ iec104ctl client read --ioa 1000
 |----------|------|-------------|------|---------|
 | **IEC104CTL_ALL** | bool | **`client monitor`**: also show confirmations and terminations of commands, and file transfer | `--all` | false |
 | **IEC104CTL_ALLOW** | list | **`server start`**: only accept clients from these addresses or CIDR prefixes | `--allow` | any |
+| **IEC104CTL_ASSOCIATION_ID** | uint16 | Association ID of IEC 62351-5, 1-65535: the AIM of a client, the AIS of **`server start`** (needs `--secure`) | `--association-id` | 1 |
 | **IEC104CTL_CA** | uint16 | Common address of the station (**`client monitor`**: only show this station) | `--ca` | 1 (monitor: all) |
 | **IEC104CTL_CA_SIZE** | uint8 | Octets of the common address, 1 or 2 (0 = 2) | `--ca-size` | 0 |
 | **IEC104CTL_COMMAND_MODE** | string | **`client command`**: execute, select, sbo or cancel | `--mode` | execute |
@@ -798,6 +853,7 @@ iec104ctl client read --ioa 1000
 | **IEC104CTL_DELAY** | uint32 | **`client scan`**: delay in ms between the requests of a sweep | `--delay` | 0 |
 | **IEC104CTL_DIRECTION** | string | **`client types`**: monitor or control | `--direction` | |
 | **IEC104CTL_DISCOVER_FORCE_LARGE** | bool | **`discover`**: allow more hosts than the built-in safety cap | `--force-large-scan` | false |
+| **IEC104CTL_DPA** | string | Data protection algorithm of IEC 62351-5, by code or name (needs `--secure`) | `--dpa` | `--mal` |
 | **IEC104CTL_DURATION** | uint32 | **`client monitor`**, **`server start`**: stop after this many seconds (0 = until interrupted) | `--duration` | 0 |
 | **IEC104CTL_END** | uint16 | **`client scan`**: last common address of a sweep | `--end` | 255 |
 | **IEC104CTL_FILE_NAME** | uint16 | **`client file get`**, **`put`**: name of file (NOF) | `--name` | 1 |
@@ -812,6 +868,7 @@ iec104ctl client read --ioa 1000
 | **IEC104CTL_IP** | string | Station IP address or host name | `--ip` | |
 | **IEC104CTL_K** | uint16 | k: maximum number of unacknowledged I frames sent (0 = 12) | `--k` | 0 |
 | **IEC104CTL_LISTEN** | string | **`server start`**: address to listen on | `--listen` | all interfaces |
+| **IEC104CTL_MAL** | string | MAC algorithm of IEC 62351-5, by code or name (needs `--secure`) | `--mal` | hmac-sha-256 |
 | **IEC104CTL_MAX_SESSIONS** | uint16 | **`server start`**: maximum number of connections (0 = no limit) | `--max-sessions` | 0 |
 | **IEC104CTL_NO_RECONNECT** | bool | **`client monitor`**: exit when the connection is lost | `--no-reconnect` | false |
 | **IEC104CTL_ORIGINATOR** | uint8 | Originator address sent with every request | `--originator` | 0 |
@@ -823,8 +880,13 @@ iec104ctl client read --ioa 1000
 | **IEC104CTL_PORTS** | list | **`discover`**: TCP ports to probe | `--ports` | 2404 |
 | **IEC104CTL_QUALIFIER** | string | **`client command`**: none, short, long, persistent, or a number | `--qualifier` | none |
 | **IEC104CTL_RESET_QUALIFIER** | string | **`client reset`**: process or events (the flag is required) | `--qualifier` | |
+| **IEC104CTL_ROLES** | list | **`server start`**: roles of every controlling station (needs `--secure`) | `--roles` | no access control |
 | **IEC104CTL_SCAN_METHOD** | string | **`client scan`**: broadcast or sweep | `--method` | broadcast |
 | **IEC104CTL_SECTION_SIZE** | uint32 | **`client file put`**: octets per section (0 = one section) | `--section-size` | 0 |
+| **IEC104CTL_SECURE** | bool | Run the application-layer security of IEC 62351-5 | `--secure` | false |
+| **IEC104CTL_SECURITY_CERT** | string | PEM file with the own station certificate of IEC 62351-5 | `--security-cert` | |
+| **IEC104CTL_SECURITY_KEY** | string | PEM file with the private key of `--security-cert` | `--security-key` | |
+| **IEC104CTL_SECURITY_TRUST** | string | PEM file with the trusted authorities and pinned station certificates | `--security-trust` | |
 | **IEC104CTL_START** | uint16 | **`client scan`**: first common address of a sweep | `--start` | 1 |
 | **IEC104CTL_SUBNETS** | list | **`discover`**: subnets, ranges or addresses to probe | `--subnets` | |
 | **IEC104CTL_T0** | uint16 | t0: connection establishment timeout in seconds (0 = 30) | `--t0` | 0 |
@@ -833,9 +895,9 @@ iec104ctl client read --ioa 1000
 | **IEC104CTL_T3** | uint16 | t3: test frame after this many seconds of inactivity (0 = 20) | `--t3` | 0 |
 | **IEC104CTL_TERMINATION** | uint32 | **`client command`**: wait this many ms for the activation termination (0 = do not wait) | `--wait-termination` | 0 |
 | **IEC104CTL_TIME** | string | **`client clock`**: now, or an RFC 3339 time | `--time` | now |
-| **IEC104CTL_TIME_TAG** | bool | **`client command`**: send the CP56Time2a variant of the type | `--time-tag` | false |
 | **IEC104CTL_TIMEOUT** | uint32 | Timeout in ms for connecting and for each request (0 = 10000); **`discover`**: per probe (0 = 1000) | `--timeout` | 0 |
 | **IEC104CTL_TIMEZONE** | string | Time zone of the time tags on the wire: utc, local or an IANA name | `--timezone` | utc |
+| **IEC104CTL_TIME_TAG** | bool | **`client command`**: send the CP56Time2a variant of the type | `--time-tag` | false |
 | **IEC104CTL_TLS** | bool | Use TLS with `--ip` | `--tls` | false |
 | **IEC104CTL_TLS_CA** | string | PEM file with the CA certificates to verify the station with | `--tls-ca` | system roots |
 | **IEC104CTL_TLS_CERT** | string | PEM file with the own certificate (client: authentication; server: the server certificate) | `--tls-cert` | |
@@ -892,7 +954,11 @@ Every client command was exercised against the servers of three independent prot
 
 ### Does iec104ctl support TLS?
 
-Yes: `--url tls://host` (port 19998 by default) with `--tls-ca`, and `--tls-cert` / `--tls-key` for a station that wants a client certificate. The simulated station serves TLS with `--tls-cert` and `--tls-key`. This is the transport security of IEC 62351-3; the application-layer authentication of IEC 62351-5 is not implemented.
+Yes: `--url tls://host` (port 19998 by default) with `--tls-ca`, and `--tls-cert` / `--tls-key` for a station that wants a client certificate. The simulated station serves TLS with `--tls-cert` and `--tls-key`. This is the transport security of IEC 62351-3.
+
+### Does iec104ctl support IEC 62351-5?
+
+Yes, the A-Profile of IEC TS 60870-5-7: `--secure` with `--security-cert`, `--security-key` and `--security-trust` on every client command and on `server start`, with or without TLS. See [Connecting to a station](#connecting-to-a-station). The implementation is the one of go-iec104, tested for interoperability with an independent implementation; the standards are not public, and conformance is not established independently.
 
 ### Does it speak IEC 60870-5-101?
 
@@ -925,7 +991,7 @@ iec104ctl/
 │   ├── format (stdout **text/json/table** via `Write`, streaming output via `StreamWriter`, table rendering)
 │   ├── runner (command wiring, formatted and streaming runs, fatal JSON/text rendering)
 │   ├── errs (typed CLI errors, stable codes, exit-code mapping)
-│   ├── iec (what the commands do: connections, TLS, requests, monitor, scan, file transfer, discovery, error classification)
+│   ├── iec (what the commands do: connections, TLS, IEC 62351-5 security, requests, monitor, scan, file transfer, discovery, error classification)
 │   ├── station (the simulated station: model, validation, behaviour, simulation)
 │   ├── stationtest (the simulated station for tests, with throw-away TLS certificates)
 │   └── types (DTOs for JSON/text/table output)

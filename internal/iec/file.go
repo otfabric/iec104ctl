@@ -37,7 +37,7 @@ func CheckFileList(cfg *config.FileListConfig) error {
 
 // FileList calls the file directory of a station.
 func FileList(ctx context.Context, cfg *config.FileListConfig, trace io.Writer) (*types.FileListResult, error) {
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func CheckFileGet(cfg *config.FileGetConfig) error {
 // FileGet fetches a file from a station and writes it to the output of cfg. With "-" the
 // content goes to content and the result is not meant for the same stream.
 func FileGet(ctx context.Context, cfg *config.FileGetConfig, trace, content io.Writer) (*types.FileTransferResult, error) {
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func FilePut(ctx context.Context, cfg *config.FilePutConfig, trace io.Writer) (*
 	if err != nil {
 		return nil, errs.New(errs.KindInvalidInput, errs.CodeInputFileOpenFailed, fmt.Sprintf("input file: %v", err), err)
 	}
-	s, err := Dial(ctx, &cfg.ConnConfig, trace)
+	s, err := Dial(ctx, cfg.Conn(), trace)
 	if err != nil {
 		return nil, err
 	}

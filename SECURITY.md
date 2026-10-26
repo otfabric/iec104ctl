@@ -38,7 +38,16 @@ Plain IEC 60870-5-104 carries no authentication and no encryption: anyone who ca
 
 - `--tls-insecure` turns off verification of the station's certificate. It is for test setups; do not use it against a station that matters
 - Private keys are read from the files you name and are never written or printed. Keep them readable by you alone
-- The application-layer authentication of IEC 62351-5 (challenge/response on critical ASDUs) is **not** implemented; its ASDU types are recognized by name only. TLS authenticates the connection, not the individual command
+- TLS authenticates the connection, not the individual ASDU: see the application-layer security below
+
+### Application-Layer Security (IEC 62351-5)
+
+`--secure` runs the A-Profile of IEC 62351-5 as IEC TS 60870-5-7 maps it onto IEC 104, on the client and on the simulated station: a Station Association authenticated with certificates, then every ASDU as Secure Data with a MAC (or AES-256-GCM with `--dpa aes-256-gcm`) and a sequence number against replay. It can be combined with TLS.
+
+- The implementation is [go-iec104](https://github.com/otfabric/go-iec104)'s package `sec`. The normative documents are not public; it was derived from an open-source implementation and is tested for interoperability with it, but its conformance to the standards is not established independently. See the security notes of go-iec104
+- `--security-trust` decides who may associate. A CA certificate in it accepts **every** station certificate that CA signed; any other certificate is pinned by its fingerprint. Trust a CA only if it signs nothing but the stations you mean
+- Keys are read from the files you name and are never written or printed. The association is kept in memory only: every run of `iec104ctl` associates anew
+- `--roles` on the simulated station applies to every controlling station alike; without it everything is permitted
 
 ### Commands That Change a Station
 

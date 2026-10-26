@@ -104,7 +104,11 @@ func build(cfg *config.ServerConfig, log func(types.ServerEvent), trace io.Write
 	if err != nil {
 		return nil, err
 	}
-	opts := Options{Link: link, ASDU: ap, TLS: tc, Allow: allow, MaxSessions: int(cfg.MaxSessions), Log: log}
+	security, err := iec.ServerSecurity(cfg.ServerSecurityConfig)
+	if err != nil {
+		return nil, err
+	}
+	opts := Options{Link: link, ASDU: ap, TLS: tc, Allow: allow, MaxSessions: int(cfg.MaxSessions), Log: log, Security: security}
 	if cfg.Debug && trace != nil {
 		opts.Metrics = &iec.Tracer{W: trace, Params: ap}
 	}

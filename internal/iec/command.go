@@ -354,7 +354,7 @@ func Command(ctx context.Context, cfg *config.CommandConfig, trace io.Writer) (*
 		return nil, err
 	}
 	term := &terminations{sig: make(chan struct{}, 1)}
-	s, err := Dial(ctx, &cfg.ConnConfig, trace, client.WithHandler(term))
+	s, err := Dial(ctx, cfg.Conn(), trace, client.WithHandler(term))
 	if err != nil {
 		return nil, err
 	}
