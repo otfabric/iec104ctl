@@ -6,7 +6,7 @@
 [![Code Coverage](https://codecov.io/gh/otfabric/iec104ctl/graph/badge.svg)](https://codecov.io/gh/otfabric/iec104ctl)
 [![Latest Release](https://img.shields.io/github/v/release/otfabric/iec104ctl?label=release)](https://github.com/otfabric/iec104ctl/releases)
 
-**iec104ctl is a command-line toolkit for IEC 60870-5-104 (IEC 104), the telecontrol protocol of power system SCADA, in both roles.** As a controlling station it interrogates an RTU, gateway or IED, watches the events it sends, issues commands and set points (direct or select-before-operate), synchronizes its clock and transfers files. As a controlled station it simulates an RTU from a model of points, commands and files, so that a SCADA front end or a protocol gateway has something to talk to.
+**iec104ctl is a command-line toolkit for IEC 60870-5-104 (IEC 104), the telecontrol protocol of power system SCADA, in both roles.** As a controlling station it interrogates an RTU, gateway or IED, watches the events it sends, issues commands and set points (direct or select-before-operate), synchronizes its clock and transfers files. As a controlled station it simulates an RTU from a model of points, commands and files, so that a SCADA front end or a protocol gateway has something to talk to. Both roles speak plain TCP, TLS (IEC 62351-3) and the application-layer security of IEC 62351-5.
 
 It is built for commissioning and site acceptance tests, point-to-point checks, troubleshooting a link between a control centre and a substation, and hardware-free test setups. Output can be plain text, a table or JSON with stable exit codes, so it works in scripts and CI. It is written in Go on top of [go-iec104](https://github.com/otfabric/go-iec104).
 
@@ -25,7 +25,7 @@ It is built for commissioning and site acceptance tests, point-to-point checks, 
 - **Test the link** — `client ping` measures the round trip of test frames or test commands; `--debug` traces every frame, decoded.
 - **Files** — list the directory of a station, fetch disturbance records, deliver a file.
 - **Simulate an RTU** — `server start` serves a station from a YAML model: values that change by themselves, commands with select-before-operate, events that are queued and delivered, redundant connections.
-- **TLS** — IEC 62351-3 transport security for client and server, with mutual authentication.
+- **Secure** — IEC 62351-3 TLS with mutual authentication, and IEC 62351-5 application-layer security (`--secure`: certificates by authority or pinned, HMAC or AES-256-GCM, roles at the station), for client and server, separately or together.
 - **Script-friendly** — `--format text|json|table`, a single JSON error object on failure, stable exit codes and `IEC104CTL_*` environment variables.
 - **Pre-built binaries** — Linux, macOS and Windows (x86-64 and ARM) from [GitHub Releases](https://github.com/otfabric/iec104ctl/releases), with SHA-256 checksums; no runtime to install.
 
