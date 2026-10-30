@@ -11,7 +11,8 @@
 | 5 | Timeout (`KindTimeout`): the station did not answer a request in time, or did not acknowledge within t1 |
 | 6 | Protocol (`KindProtocol`, `KindNegative`): the station refused the request (negative confirmation, or "unknown type / cause / common address / information object address"), or violated the protocol |
 | 7 | Partial success (`ExitPartial`): a **valid** result was written to stdout, and it holds failures: an address of `client read` that was refused or not answered, or a failed test of `client ping` |
-| 10 | Output / internal (`KindOutput`, `KindInternal`): the result could not be written, the command was interrupted before it had a result, or something unexpected happened |
+| 10 | Output / internal (`KindOutput`, `KindInternal`): the result could not be written, or something unexpected happened |
+| 130 | Interrupted (`KindInterrupted`): Ctrl-C or SIGTERM before a one-shot command had its result |
 
 **Kind vs code:** `kind` drives the exit code; `code` in the JSON error object is stable for machines. Do not parse the human `message`.
 
@@ -23,7 +24,8 @@
 | `negative_confirmation` | `negative_confirmation`, `unknown_type`, `unknown_cause`, `unknown_common_address`, `unknown_object_address` |
 | `protocol` | `protocol_violation`, `data_transfer_not_started`, `request_busy` |
 | `output` | `json_encode_failed`, `table_render_failed`, `output_write_failed`, `output_file_write_failed`, `output_file_create_failed` |
-| `internal` | `context_canceled`, `internal_unexpected` |
+| `internal` | `internal_unexpected` |
+| `interrupted` | `context_canceled` |
 
 **Partial exit:** only after a success payload was written. A failure to connect, to validate or to write is fatal and uses the codes above, never `7`.
 
@@ -34,3 +36,7 @@
 **Commands that change a station:** `client command`, `client clock`, `client reset`, `client counters` with a freeze or reset, and `client file put` validate everything before sending; a rejected invocation exits `3` and has sent nothing. A refusal by the station exits `6`, a missing answer `5`. Nothing is ever sent a second time.
 
 **`--debug`:** adds the frame trace and, after a fatal error, the chain of causes (`cause: …` lines) on stderr. It does not change stdout or the exit code.
+
+**Organisation table:** these codes follow the OT Fabric CLI exit-code table. iec104ctl does not use `1`, `8` and `9`: they keep their organisation meaning and are not reused for anything else.
+
+**Format variable:** `IEC104CTL_FORMAT` is the name to use; `IEC104CTL_OUTPUT_FORMAT` stays accepted. When both are set, `IEC104CTL_FORMAT` wins.
