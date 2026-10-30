@@ -209,7 +209,7 @@ func TestErrorClassification(t *testing.T) {
 		{iec104.ErrInvalidOption, errs.KindInvalidInput, errs.CodeInvalidInput, 3},
 		{asdu.ErrInvalidValue, errs.KindInvalidInput, errs.CodeInvalidInput, 3},
 		{&net.OpError{Op: "read", Err: errors.New("reset")}, errs.KindTransport, errs.CodeConnectionLost, 4},
-		{context.Canceled, errs.KindInternal, errs.CodeContextCanceled, 10},
+		{context.Canceled, errs.KindInterrupted, errs.CodeContextCanceled, 130},
 		{errors.New("surprise"), errs.KindInternal, errs.CodeInternalUnexpected, 10},
 	} {
 		e, ok := errs.As(WrapError(c.err))

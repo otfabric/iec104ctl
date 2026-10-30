@@ -92,7 +92,7 @@ type InterrogateConfig struct {
 	Group        uint8  `env:"IEC104CTL_GROUP" desc:"Interrogation group 1-16, or 0 for a general (station) interrogation" flag:"group"`
 	Types        string `env:"IEC104CTL_TYPES" desc:"Only show these types: comma-separated names or numbers (e.g. M_SP_NA_1,M_ME_NC_1 or 1,13)" flag:"type"`
 	IOAs         string `env:"IEC104CTL_IOA" desc:"Only show these information object addresses: list and ranges (e.g. 100,200-299)" flag:"ioa"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // CountersConfig drives `client counters`.
@@ -100,14 +100,14 @@ type CountersConfig struct {
 	StationConfig
 	Group        uint8  `env:"IEC104CTL_GROUP" desc:"Counter group 1-4, or 0 for a general counter request" flag:"group"`
 	Freeze       string `env:"IEC104CTL_FREEZE" desc:"What the request does to the counters: read, freeze, freeze-reset or reset" flag:"freeze"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // ReadConfig drives `client read`.
 type ReadConfig struct {
 	StationConfig
 	IOAs         string `env:"IEC104CTL_IOA" desc:"Information object addresses to read: list and ranges (e.g. 100,200-203)" flag:"ioa"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // MonitorConfig drives `client monitor`.
@@ -121,7 +121,7 @@ type MonitorConfig struct {
 	Count        uint32 `env:"IEC104CTL_COUNT" desc:"Stop after this many values (0 = until interrupted)" flag:"count"`
 	All          bool   `env:"IEC104CTL_ALL" desc:"Also show what is not process information: confirmations and terminations of commands, file transfer" flag:"all"`
 	NoReconnect  bool   `env:"IEC104CTL_NO_RECONNECT" desc:"Exit when the connection is lost instead of reconnecting" flag:"no-reconnect"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // CommandConfig drives `client command`.
@@ -134,21 +134,21 @@ type CommandConfig struct {
 	Qualifier    string `env:"IEC104CTL_QUALIFIER" desc:"Qualifier of command: none, short (short pulse), long (long pulse) or persistent; a number 0-127 for set points" flag:"qualifier"`
 	TimeTag      bool   `env:"IEC104CTL_TIME_TAG" desc:"Send the command with a time tag (the CP56Time2a variant, e.g. C_SC_TA_1)" flag:"time-tag"`
 	Termination  uint32 `env:"IEC104CTL_TERMINATION" desc:"Also wait up to this many milliseconds for the activation termination after the execute (0 = do not wait)" flag:"wait-termination"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // ClockConfig drives `client clock`.
 type ClockConfig struct {
 	StationConfig
 	Time         string `env:"IEC104CTL_TIME" desc:"Time to set: now, or an RFC 3339 time such as 2026-01-31T12:00:00Z" flag:"time"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // ResetConfig drives `client reset`.
 type ResetConfig struct {
 	StationConfig
 	Qualifier    string `env:"IEC104CTL_RESET_QUALIFIER" desc:"What to reset: process (general reset of the process) or events (reset of pending information with time tag)" flag:"qualifier"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // PingConfig drives `client ping`.
@@ -157,7 +157,7 @@ type PingConfig struct {
 	Method       string `env:"IEC104CTL_PING_METHOD" desc:"What to send: testfr (link test frame, TESTFR act/con) or command (test command C_TS_TA_1, through the station's application)" flag:"method"`
 	Count        uint32 `env:"IEC104CTL_COUNT" desc:"Number of tests before exiting (0 = until interrupted)" flag:"count"`
 	Interval     uint32 `env:"IEC104CTL_INTERVAL" desc:"Interval between tests in milliseconds" flag:"interval"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // ScanConfig drives `client scan`.
@@ -167,14 +167,14 @@ type ScanConfig struct {
 	Start        uint16 `env:"IEC104CTL_START" desc:"First common address of a sweep" flag:"start"`
 	End          uint16 `env:"IEC104CTL_END" desc:"Last common address of a sweep" flag:"end"`
 	Delay        uint32 `env:"IEC104CTL_DELAY" desc:"Delay in milliseconds between the requests of a sweep" flag:"delay"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // FileListConfig drives `client file list`.
 type FileListConfig struct {
 	StationConfig
 	IOA          uint32 `env:"IEC104CTL_IOA" desc:"Information object address of the directory (0 = the station's default directory)" flag:"ioa"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // FileGetConfig drives `client file get`.
@@ -183,7 +183,7 @@ type FileGetConfig struct {
 	IOA          uint32 `env:"IEC104CTL_IOA" desc:"Information object address of the file" flag:"ioa"`
 	Name         uint16 `env:"IEC104CTL_FILE_NAME" desc:"Name of file (NOF), a number 0-65535" flag:"name"`
 	Output       string `env:"IEC104CTL_OUTPUT" desc:"File to write the content to (- = stdout)" flag:"output"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // FilePutConfig drives `client file put`.
@@ -193,13 +193,13 @@ type FilePutConfig struct {
 	Name         uint16 `env:"IEC104CTL_FILE_NAME" desc:"Name of file (NOF), a number 0-65535" flag:"name"`
 	Input        string `env:"IEC104CTL_INPUT" desc:"File whose content is sent" flag:"input"`
 	SectionSize  uint32 `env:"IEC104CTL_SECTION_SIZE" desc:"Octets per section (0 = the whole file as one section)" flag:"section-size"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // TypesConfig drives `client types`.
 type TypesConfig struct {
 	Direction    string `env:"IEC104CTL_DIRECTION" desc:"Only list types of this direction: monitor or control" flag:"direction"`
-	OutputFormat string `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 }
 
 // DiscoverConfig drives `discover`.
@@ -209,7 +209,7 @@ type DiscoverConfig struct {
 	Timeout      uint32   `env:"IEC104CTL_TIMEOUT" desc:"Timeout in milliseconds per probe (0 = 1000)" flag:"timeout"`
 	Parallel     uint16   `env:"IEC104CTL_PARALLEL" desc:"Number of concurrent probes (1-256)" flag:"parallel"`
 	ForceLarge   bool     `env:"IEC104CTL_DISCOVER_FORCE_LARGE" desc:"Allow a scan of more hosts than the built-in safety cap" flag:"force-large-scan"`
-	OutputFormat string   `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
+	OutputFormat string   `env:"IEC104CTL_FORMAT" desc:"Output format: text, json, or table" flag:"format"`
 	Debug        bool     // set from global --debug (root persistent flag)
 }
 
@@ -226,7 +226,7 @@ type ServerConfig struct {
 	Allow        []string `env:"IEC104CTL_ALLOW" desc:"Only accept clients from these addresses or CIDR prefixes (default: any)" flag:"allow"`
 	MaxSessions  uint16   `env:"IEC104CTL_MAX_SESSIONS" desc:"Maximum number of simultaneous connections (0 = no limit)" flag:"max-sessions"`
 	Duration     uint32   `env:"IEC104CTL_DURATION" desc:"Stop after this many seconds (0 = until interrupted)" flag:"duration"`
-	OutputFormat string   `env:"IEC104CTL_OUTPUT_FORMAT" desc:"Format of the event log on stdout: text, json, or table" flag:"format"`
+	OutputFormat string   `env:"IEC104CTL_FORMAT" desc:"Format of the event log on stdout: text, json, or table" flag:"format"`
 	Debug        bool     // set from global --debug (root persistent flag)
 }
 

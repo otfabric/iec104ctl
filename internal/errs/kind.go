@@ -11,7 +11,8 @@ const (
 	KindProtocol     Kind = "protocol"
 	// KindNegative is a request the station answered and refused: a negative confirmation
 	// or an "unknown type / cause / common address / object address" reply.
-	KindNegative Kind = "negative_confirmation"
-	KindOutput   Kind = "output"
-	KindInternal Kind = "internal"
+	KindNegative    Kind = "negative_confirmation"
+	KindOutput      Kind = "output"
+	KindInternal    Kind = "internal"
+	KindInterrupted Kind = "interrupted"
 )

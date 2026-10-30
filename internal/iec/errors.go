@@ -35,7 +35,7 @@ func WrapError(err error) error {
 	)
 	switch {
 	case errors.Is(err, context.Canceled):
-		return errs.New(errs.KindInternal, errs.CodeContextCanceled, "interrupted", err)
+		return errs.New(errs.KindInterrupted, errs.CodeContextCanceled, "interrupted", err)
 	case errors.As(err, &certErr), errors.As(err, &unknown), errors.As(err, &hostname), errors.As(err, &record):
 		return errs.New(errs.KindTransport, errs.CodeTransportTLSFailed, fmt.Sprintf("TLS error: %v", err), err)
 	case isSecError(err):

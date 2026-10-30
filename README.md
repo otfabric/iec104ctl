@@ -143,7 +143,7 @@ They combine well: use iec104ctl to drive and check a station from the command l
 | Security         | The application-layer security of IEC 62351-5 (A-Profile of IEC TS 60870-5-7) on every client command and on the simulated station: **`--secure`**, certificates trusted by authority or pinned, HMAC-SHA-256 or AES-256-GCM, role-based access control at the station. See [Connecting to a station](#connecting-to-a-station). |
 | Protocol parameters | `k`, `w`, `t0`-`t3`, originator address, and the ASDU field sizes of IEC 60870-5-101 gateways (cause, common address, object address). |
 | Type coverage    | Every monitoring type of IEC 60870-5-104 including the CP24Time2a and CP56Time2a variants, protection events, packed single points, parameters and file transfer, and the security types of IEC 62351-5. |
-| `--format`       | Every command that prints a result accepts **`--format text\|json\|table`** (or **`IEC104CTL_OUTPUT_FORMAT`**); streams write JSON Lines. |
+| `--format`       | Every command that prints a result accepts **`--format text\|json\|table`** (or **`IEC104CTL_FORMAT`**); streams write JSON Lines. |
 | `--debug`        | Trace every frame sent and received, decoded, to stderr.                                                                  |
 | Completion       | Shell completion for bash, zsh, fish and PowerShell; flags with a fixed set of values (**`--format`**, **`--type`**, **`--mode`**, **`--method`**, …) complete to those values. |
 
@@ -368,7 +368,7 @@ Every command has `--help`, with a description and examples.
 
 **Global flag:** `--debug` — trace every frame sent and received to stderr, with the ASDU decoded and in hex, and print the chain of causes after an error.
 
-**Output format (`--format`):** every command that prints a result accepts **`--format text`** (default), **`json`** or **`table`**, or set **`IEC104CTL_OUTPUT_FORMAT`**. It controls **only** the result on **stdout**. Progress, connection state, summaries and the debug trace go to **stderr**, so stdout can be piped or parsed as it is. The JSON shapes are a stable contract: see [docs/json-output.md](docs/json-output.md).
+**Output format (`--format`):** every command that prints a result accepts **`--format text`** (default), **`json`** or **`table`**, or set **`IEC104CTL_FORMAT`**. It controls **only** the result on **stdout**. Progress, connection state, summaries and the debug trace go to **stderr**, so stdout can be piped or parsed as it is. The JSON shapes are a stable contract: see [docs/json-output.md](docs/json-output.md).
 
 **Streams:** `client monitor`, `client ping` and `server start` write one record as it happens: one line (**text**), one JSON object per line (**json**, JSON Lines) or one table row (**table**). They run until interrupted with Ctrl-C, which ends them normally.
 
@@ -384,6 +384,7 @@ Every command has `--help`, with a description and examples.
 | 6 | The station refused the request, or a protocol error |
 | 7 | Partial success: a valid result that holds failures |
 | 10 | Output or internal error |
+| 130 | Interrupted before a result |
 
 See [docs/exitcodes.md](docs/exitcodes.md) for the details and the `code` values.
 
@@ -825,7 +826,7 @@ The full reference of the model is in [docs/server-config.md](docs/server-config
 
 ## Environment Variable Configuration
 
-Every flag can also be set through an environment variable, which is convenient for automation and for flags you would otherwise repeat on every command (`IEC104CTL_URL`, `IEC104CTL_CA`, `IEC104CTL_OUTPUT_FORMAT`). A flag on the command line wins over the environment. A value that cannot be parsed (a port that is not a number) stops iec104ctl at startup. A flag that is **required** (`--ioa` of `client read`, `--type` and `--value` of `client command`, `--qualifier` of `client reset`) must still be given on the command line. The global flag `--debug` has no environment variable.
+Every flag can also be set through an environment variable, which is convenient for automation and for flags you would otherwise repeat on every command (`IEC104CTL_URL`, `IEC104CTL_CA`, `IEC104CTL_FORMAT`). A flag on the command line wins over the environment. A value that cannot be parsed (a port that is not a number) stops iec104ctl at startup. A flag that is **required** (`--ioa` of `client read`, `--type` and `--value` of `client command`, `--qualifier` of `client reset`) must still be given on the command line. The global flag `--debug` has no environment variable.
 
 ```console
 export IEC104CTL_URL=tcp://192.168.1.10:2404
@@ -873,7 +874,7 @@ iec104ctl client read --ioa 1000
 | **IEC104CTL_NO_RECONNECT** | bool | **`client monitor`**: exit when the connection is lost | `--no-reconnect` | false |
 | **IEC104CTL_ORIGINATOR** | uint8 | Originator address sent with every request | `--originator` | 0 |
 | **IEC104CTL_OUTPUT** | string | **`client file get`**: file to write (`-` = stdout); **`server generate-config`**: file to write | `--output` | (generate-config: `-`) |
-| **IEC104CTL_OUTPUT_FORMAT** | string | Output format: text, json or table | `--format` | text |
+| **IEC104CTL_FORMAT** | string | (`IEC104CTL_OUTPUT_FORMAT` stays accepted) Output format: text, json or table | `--format` | text |
 | **IEC104CTL_PARALLEL** | uint16 | **`discover`**: concurrent probes (1-256) | `--parallel` | 32 |
 | **IEC104CTL_PING_METHOD** | string | **`client ping`**: testfr or command | `--method` | testfr |
 | **IEC104CTL_PORT** | uint16 | Station TCP port; **`server start`**: port to listen on (0 = 2404, or 19998 with TLS) | `--port` | 2404 |
@@ -970,7 +971,7 @@ It can. A station sends its events on one connection, and yours may become that 
 
 ### How do I use iec104ctl in scripts and CI?
 
-Pass `--format json` (or set `IEC104CTL_OUTPUT_FORMAT=json`). Progress goes to stderr, the result goes to stdout, and a failure returns one JSON error object with a stable exit code. `iec104ctl server start --config model.yaml --duration 60` gives a pipeline a station to test against. See [General CLI usage](#general-cli-usage), [docs/json-output.md](docs/json-output.md) and [docs/exitcodes.md](docs/exitcodes.md).
+Pass `--format json` (or set `IEC104CTL_FORMAT=json`). Progress goes to stderr, the result goes to stdout, and a failure returns one JSON error object with a stable exit code. `iec104ctl server start --config model.yaml --duration 60` gives a pipeline a station to test against. See [General CLI usage](#general-cli-usage), [docs/json-output.md](docs/json-output.md) and [docs/exitcodes.md](docs/exitcodes.md).
 
 ---
 
