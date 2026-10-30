@@ -1,5 +1,16 @@
 # iec104ctl Releases
 
+## v0.4.0
+
+**Date:** 2026-10-30
+**Previous release:** v0.3.0
+
+### Dependencies
+
+- `go-iec104` v0.0.4 → v0.0.5.
+
+---
+
 ## v0.3.0
 
 **Date:** 2026-10-30
