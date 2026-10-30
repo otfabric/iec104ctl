@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   release-iec104ctl-binary:
-    uses: otfabric/.github/.github/workflows/go-binary-release.yml@v2
+    uses: otfabric/.github/.github/workflows/go-binary-release.yml@v2.1.1
     with:
       bump: ${{ inputs.bump }}
       binary-name: iec104ctl
