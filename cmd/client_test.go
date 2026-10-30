@@ -209,20 +209,24 @@ func TestCommand(t *testing.T) {
 	})
 	t.Run("select and cancel operate nothing", func(t *testing.T) {
 		before := value(100)
-		disconnects := func() (n int) {
+		open := func() (n int) {
 			for _, e := range st.Events() {
-				if e.Event == "disconnected" {
+				switch e.Event {
+				case "connected":
 					n++
+				case "disconnected":
+					n--
 				}
 			}
 			return n
 		}
-		gone := disconnects()
 		cli(t, st, "command", "--type", "single", "--ioa", "5000", "--value", "on", "--mode", "select").want(t, 0).has(t, "select", "confirmed")
 		// The selection belongs to the session that made it, and the station
 		// drops it when it handles that session's disconnect. Until then a
 		// select from the next run is refused as made by another station.
-		eventually(t, "the selecting session is gone", func() bool { return disconnects() > gone })
+		// Sessions of earlier subtests may still be closing, so a rising
+		// disconnect count would not prove this one has gone.
+		eventually(t, "the selecting session is gone", func() bool { return open() == 0 })
 		cli(t, st, "command", "--type", "single", "--ioa", "5000", "--value", "on", "--mode", "cancel", "--format", "table").want(t, 0).has(t, "select", "cancel")
 		if value(100) != before {
 			t.Errorf("point 100 changed from %v to %v", before, value(100))
