@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 // Package cmd is the command tree of iec104ctl.
 package cmd
 

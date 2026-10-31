@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 // Package station is the simulated controlled station behind `iec104ctl server start`: a
 // model of points, commands and files read from YAML or JSON, and the station that serves
 // it. The tests of the client commands run against it as well.

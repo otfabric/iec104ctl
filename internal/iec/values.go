@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 // Package iec implements what the commands do: it talks to stations through go-iec104 and
 // returns the output types of package types.
 package iec
