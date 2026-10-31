@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package main
 
 import (
@@ -14,7 +16,10 @@ var (
 	buildDate = ""
 )
 
+// exit is os.Exit; a test replaces it to see the code main ends with.
+var exit = os.Exit
+
 func main() {
 	cmd.SetBuildMeta(version, tag, commit, buildDate)
-	os.Exit(cmd.Execute())
+	exit(cmd.Execute())
 }

@@ -23,4 +23,16 @@ jobs:
       # coverage across the whole module, matching `make coverage`.
       test-exclude-regex: "/example(s)?($|/)"
       coverpkg: ./...
+      fuzz-time: 10s
     secrets: inherit
+
+  # go-ci gates the total; this gates each package (COVER_PKG_MIN).
+  coverage-floor:
+    name: Per-package coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make coverage-pkg-check

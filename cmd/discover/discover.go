@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 // Package discover holds `iec104ctl discover`.
 package discover
 

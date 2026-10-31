@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 // Package server holds the commands of a controlled station: `iec104ctl server …`.
 package server
 

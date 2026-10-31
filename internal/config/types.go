@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 package config
 
 // TLSConfig holds the TLS settings of a connection (IEC 62351-3). On a client they apply to
