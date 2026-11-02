@@ -1,5 +1,16 @@
 # iec104ctl Releases
 
+## v0.4.2
+
+**Date:** 2026-11-02
+**Previous release:** v0.4.1
+
+### Changed
+
+- Built on go-iec104 v0.1.2: in a redundancy group named with `WithRedundancyGroups`, a takeover now closes the old connection. `iec104ctl`'s own station does not name groups, so its behaviour is unchanged.
+
+---
+
 ## v0.4.1
 
 **Date:** 2026-10-31
