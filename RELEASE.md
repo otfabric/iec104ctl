@@ -1,5 +1,16 @@
 # iec104ctl Releases
 
+## v0.6.0
+
+**Date:** 2026-11-04
+**Previous release:** v0.5.0
+
+### Changed
+
+- **Upload limits for the simulated station.** With `uploads.accept`, `server start` used to keep every delivered file with no limit, so a client could fill memory or disk. It now keeps at most 64 files of up to 1 MiB each and 16 MiB in total. A delivery beyond a limit is refused when it is announced, and the `file-received` event names the limit. The model can change each limit: `uploads.max_files`, `uploads.max_file_size` (up to 16 777 215) and `uploads.max_total_size`. A file delivered to an address that already holds one replaces it, and with `uploads.dir` the replaced file is removed from disk.
+
+---
+
 ## v0.5.0
 
 **Date:** 2026-11-04

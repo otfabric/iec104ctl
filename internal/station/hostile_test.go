@@ -284,8 +284,11 @@ func TestHostileUploads(t *testing.T) {
 		}
 	}
 
-	// The largest file announced: called, as any other.
+	// The largest file announced: above the default uploads.max_file_size, refused.
 	file(asdu.FileReady{IOA: ioa, Name: name, Length: asdu.MaxFileLength})
+	refused("the largest file announced", asdu.F_FR_NA_1)
+	// A file within the limits: called.
+	file(asdu.FileReady{IOA: ioa, Name: name, Length: 4096})
 	if call, ok := reply("the call of the file", asdu.F_SC_NA_1).First().(asdu.FileCall); !ok || call.Qualifier != asdu.FileRequest {
 		t.Fatalf("the announced file was answered %+v", call)
 	}
