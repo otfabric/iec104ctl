@@ -241,9 +241,13 @@ func parseCommand(cfg *config.CommandConfig) (commandSpec, error) {
 		if err != nil {
 			return spec, fmt.Errorf("invalid --value %q for a bitstring command: use a number from 0 to 4294967295, or 0x hex", value)
 		}
-		spec.value, spec.selectable = uint32(n), false
+		if n > math.MaxUint32 {
+			return spec, fmt.Errorf("invalid --value %q for a bitstring command: use a number from 0 to 4294967295, or 0x hex", value)
+		}
+		v := uint32(n)
+		spec.value, spec.selectable = v, false
 		spec.build = func(_ bool, t asdu.Timestamp) asdu.InformationObject {
-			return asdu.BitstringCommand{IOA: ioa, Value: uint32(n), Time: t}
+			return asdu.BitstringCommand{IOA: ioa, Value: v, Time: t}
 		}
 	}
 	return spec, nil

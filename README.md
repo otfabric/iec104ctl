@@ -1,6 +1,6 @@
 # iec104ctl — IEC 60870-5-104 Command-Line Tool: Interrogate, Monitor, Command, Transfer Files & Simulate an RTU
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI Status](https://github.com/otfabric/iec104ctl/actions/workflows/ci.yml/badge.svg)](https://github.com/otfabric/iec104ctl/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/otfabric/iec104ctl/graph/badge.svg)](https://codecov.io/gh/otfabric/iec104ctl)
@@ -300,7 +300,7 @@ Run the same commands again. They always fetch the latest release and overwrite 
 
 ### Build from source
 
-Requires Go 1.25 or later:
+Requires Go 1.26 or later:
 
 ```console
 git clone https://github.com/otfabric/iec104ctl.git

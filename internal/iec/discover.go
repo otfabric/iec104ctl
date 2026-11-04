@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/netip"
 	"sort"
@@ -82,11 +83,11 @@ func ExpandHosts(specs []string, limit int) ([]string, error) {
 				return nil, fmt.Errorf("invalid range %q: use the form 192.168.1.10-20", spec)
 			}
 			b := addr.As4()
-			if uint8(end) < b[3] {
+			if end > math.MaxUint8 || byte(end) < b[3] {
 				return nil, fmt.Errorf("invalid range %q: the end is below the start", spec)
 			}
 			for i := int(b[3]); i <= int(end); i++ {
-				b[3] = uint8(i)
+				b[3] = byte(i & 0xFF)
 				if err := add(netip.AddrFrom4(b).String()); err != nil {
 					return nil, err
 				}
@@ -207,9 +208,7 @@ func Discover(ctx context.Context, cfg *config.DiscoverConfig, progress io.Write
 	)
 	begin := time.Now()
 	for range int(cfg.Parallel) {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for j := range jobs {
 				status, rtt := probe(ctx, net.JoinHostPort(j.host, strconv.Itoa(int(j.port))), timeout)
 				if status == probeClosed {
@@ -222,7 +221,7 @@ func Discover(ctx context.Context, cfg *config.DiscoverConfig, progress io.Write
 				}
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 feed:
 	for _, h := range hosts {

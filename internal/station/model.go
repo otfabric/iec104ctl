@@ -51,7 +51,7 @@ type Model struct {
 	Points   []PointSpec   `yaml:"points" json:"points"`
 	Commands []CommandSpec `yaml:"commands,omitempty" json:"commands,omitempty"`
 	Files    []FileSpec    `yaml:"files,omitempty" json:"files,omitempty"`
-	Uploads  UploadSpec    `yaml:"uploads,omitempty" json:"uploads,omitempty"`
+	Uploads  UploadSpec    `yaml:"uploads,omitempty" json:"uploads"`
 
 	// dir is the directory of the model file: relative paths in the model start there.
 	dir string
@@ -189,7 +189,7 @@ const maxIOA = 1<<24 - 1
 
 // Load reads a model from a YAML or JSON file and validates it.
 func Load(path string) (*Model, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // the operator's own model file
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +369,7 @@ func sectionSize(f FileSpec) int {
 func (m *Model) fileContent(f FileSpec) ([]byte, error) {
 	switch {
 	case f.Path != "":
-		return os.ReadFile(m.resolve(f.Path))
+		return os.ReadFile(filepath.Clean(m.resolve(f.Path)))
 	case f.Content != "":
 		return []byte(f.Content), nil
 	}

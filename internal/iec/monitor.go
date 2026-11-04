@@ -126,14 +126,14 @@ func Monitor(ctx context.Context, cfg *config.MonitorConfig, status io.Writer, e
 				continue
 			}
 			mu.Lock()
-			if emitErr != nil || (cfg.Count != 0 && uint32(sum.Values) >= cfg.Count) {
+			if emitErr != nil || (cfg.Count != 0 && sum.Values >= int(cfg.Count)) {
 				mu.Unlock()
 				return
 			}
 			p.ReceivedAt = now
 			sum.Values++
 			sum.ByType[p.Type]++
-			done := cfg.Count != 0 && uint32(sum.Values) >= cfg.Count
+			done := cfg.Count != 0 && sum.Values >= int(cfg.Count)
 			if err := emit(&p); err != nil {
 				emitErr = err
 				done = true

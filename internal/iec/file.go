@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/otfabric/go-iec104/asdu"
@@ -111,7 +112,7 @@ func FileGet(ctx context.Context, cfg *config.FileGetConfig, trace, content io.W
 		}
 		return res, nil
 	}
-	if err := os.WriteFile(cfg.Output, data, 0o644); err != nil { //nolint:gosec // the operator's own output file
+	if err := os.WriteFile(filepath.Clean(cfg.Output), data, 0o600); err != nil {
 		return nil, errs.Output(errs.CodeOutputFileWriteFailed, err)
 	}
 	res.Path = cfg.Output

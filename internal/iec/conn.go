@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -118,7 +119,7 @@ func ClientTLS(cfg config.TLSConfig) (*tls.Config, error) {
 }
 
 func certPool(path string) (*x509.CertPool, error) {
-	pem, err := os.ReadFile(path) //nolint:gosec // a path the operator gave
+	pem, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, fmt.Errorf("reading CA certificates: %w", err)
 	}
