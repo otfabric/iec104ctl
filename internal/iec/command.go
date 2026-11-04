@@ -307,47 +307,45 @@ func CheckCommand(cfg *config.CommandConfig) error {
 	return nil
 }
 
-// terminations records the activation terminations a station sends, for --wait-termination.
+// terminations waits for the activation termination of one command, for --wait-termination.
+// It keeps nothing of what else the station sends: a station that floods terminations of
+// other objects costs neither memory nor a search per termination.
 type terminations struct {
-	mu   sync.Mutex
-	seen []*asdu.ASDU
-	sig  chan struct{}
+	typ  asdu.TypeID
+	ca   asdu.CommonAddr
+	ioa  asdu.IOA
+	once sync.Once
+	done chan struct{}
+}
+
+func newTerminations(typ asdu.TypeID, ca asdu.CommonAddr, ioa asdu.IOA) *terminations {
+	return &terminations{typ: typ, ca: ca, ioa: ioa, done: make(chan struct{})}
 }
 
 func (t *terminations) HandleASDU(a *asdu.ASDU) {
-	if a.Cause != asdu.CauseActivationTerm {
+	if a.Cause != asdu.CauseActivationTerm || a.Type != t.typ || a.CommonAddr != t.ca ||
+		a.First() == nil || a.First().Address() != t.ioa {
 		return
 	}
-	t.mu.Lock()
-	t.seen = append(t.seen, a)
-	t.mu.Unlock()
-	select {
-	case t.sig <- struct{}{}:
-	default:
-	}
+	t.once.Do(func() { close(t.done) })
 }
 
-// wait returns true when the termination of the command of type typ at ioa has arrived
-// within d.
-func (t *terminations) wait(ctx context.Context, typ asdu.TypeID, ca asdu.CommonAddr, ioa asdu.IOA, d time.Duration) bool {
+// wait returns true when the termination has arrived within d.
+func (t *terminations) wait(ctx context.Context, d time.Duration) bool {
 	deadline := time.NewTimer(d)
 	defer deadline.Stop()
-	for {
-		t.mu.Lock()
-		for _, a := range t.seen {
-			if a.Type == typ && a.CommonAddr == ca && a.First() != nil && a.First().Address() == ioa {
-				t.mu.Unlock()
-				return true
-			}
-		}
-		t.mu.Unlock()
-		select {
-		case <-t.sig:
-		case <-deadline.C:
-			return false
-		case <-ctx.Done():
-			return false
-		}
+	select {
+	case <-t.done:
+		return true
+	case <-deadline.C:
+	case <-ctx.Done():
+	}
+	// A termination that arrived together with the deadline still counts.
+	select {
+	case <-t.done:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -359,14 +357,18 @@ func Command(ctx context.Context, cfg *config.CommandConfig, trace io.Writer) (*
 	if err != nil {
 		return nil, err
 	}
-	term := &terminations{sig: make(chan struct{}, 1)}
+	ca := asdu.CommonAddr(cfg.CommonAddr)
+	typ := spec.base
+	if spec.tagged {
+		typ = timeTagged[spec.base]
+	}
+	term := newTerminations(typ, ca, spec.ioa)
 	s, err := Dial(ctx, cfg.Conn(), trace, client.WithHandler(term))
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = s.Close() }()
 
-	ca := asdu.CommonAddr(cfg.CommonAddr)
 	res := &types.CommandResult{
 		Target:     s.Target.String(),
 		CommonAddr: cfg.CommonAddr,
@@ -413,12 +415,8 @@ func Command(ctx context.Context, cfg *config.CommandConfig, trace io.Writer) (*
 	}
 	if cfg.Termination != 0 {
 		begin := time.Now()
-		typ := spec.base
-		if spec.tagged {
-			typ = timeTagged[spec.base]
-		}
 		result := "not-received"
-		if term.wait(ctx, typ, ca, spec.ioa, time.Duration(cfg.Termination)*time.Millisecond) {
+		if term.wait(ctx, time.Duration(cfg.Termination)*time.Millisecond) {
 			result = "received"
 		}
 		res.Steps = append(res.Steps, types.CommandStep{Step: "termination", Result: result, RTTMs: ms(time.Since(begin))})
