@@ -4,7 +4,8 @@ package iec
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -64,7 +65,7 @@ func (r Ranges) Each(f func(n uint32) bool) {
 // inclusive ranges, comma-separated, each at most max. what names the list in errors.
 func ParseRanges(s, what string, max uint32) (Ranges, error) {
 	var out Ranges
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
@@ -125,14 +126,10 @@ var typeNames = func() map[string]asdu.TypeID {
 
 // TypeNames returns the names of the types go-iec104 knows, sorted by number.
 func TypeNames() []string {
-	ids := make([]int, 0, len(typeNames))
-	for _, t := range typeNames {
-		ids = append(ids, int(t))
-	}
-	sort.Ints(ids)
+	ids := slices.Sorted(maps.Values(typeNames))
 	out := make([]string, 0, len(ids))
 	for _, id := range ids {
-		out = append(out, asdu.TypeID(id).String())
+		out = append(out, id.String())
 	}
 	return out
 }
@@ -153,7 +150,7 @@ func ParseType(s string) (asdu.TypeID, error) {
 // ParseTypes parses --type: a comma-separated list of type names or numbers.
 func ParseTypes(s string) (map[asdu.TypeID]bool, error) {
 	out := map[asdu.TypeID]bool{}
-	for _, part := range strings.Split(s, ",") {
+	for part := range strings.SplitSeq(s, ",") {
 		if strings.TrimSpace(part) == "" {
 			continue
 		}
@@ -225,10 +222,8 @@ func CheckCommonAddr(ca uint16, broadcast bool) error {
 
 // oneOf validates an enumerated flag value.
 func oneOf(flagName, value string, allowed ...string) error {
-	for _, a := range allowed {
-		if value == a {
-			return nil
-		}
+	if slices.Contains(allowed, value) {
+		return nil
 	}
 	return fmt.Errorf("invalid --%s %q (expected: %s)", flagName, value, strings.Join(allowed, ", "))
 }

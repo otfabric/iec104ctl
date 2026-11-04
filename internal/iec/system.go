@@ -14,15 +14,24 @@ import (
 	"github.com/otfabric/iec104ctl/internal/types"
 )
 
-// parseClockTime resolves --time: now, or an RFC 3339 time.
-func parseClockTime(s string, now time.Time) (time.Time, error) {
+// parseClockTime resolves --time: now, or an RFC 3339 time. The time must fit a CP56Time2a
+// in loc, the time zone on the wire: its year has two digits, read as 1970 to 2069. Outside
+// that window the time would go out flagged invalid and in another century, so it is refused
+// before anything is sent.
+func parseClockTime(s string, now time.Time, loc *time.Location) (time.Time, error) {
 	s = strings.TrimSpace(s)
-	if s == "" || strings.EqualFold(s, "now") {
-		return now, nil
+	t := now
+	if s != "" && !strings.EqualFold(s, "now") {
+		var err error
+		if t, err = time.Parse(time.RFC3339Nano, s); err != nil {
+			return time.Time{}, fmt.Errorf("invalid --time %q: use now or an RFC 3339 time such as 2026-01-31T12:00:00Z", s)
+		}
 	}
-	t, err := time.Parse(time.RFC3339Nano, s)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid --time %q: use now or an RFC 3339 time such as 2026-01-31T12:00:00Z", s)
+	if loc == nil {
+		loc = time.UTC
+	}
+	if y := t.In(loc).Year(); y < 1970 || y > 2069 {
+		return time.Time{}, fmt.Errorf("invalid --time %q: a clock synchronization carries the years 1970 to 2069 only", s)
 	}
 	return t, nil
 }
@@ -35,7 +44,11 @@ func CheckClock(cfg *config.ClockConfig) error {
 	if err := CheckCommonAddr(cfg.CommonAddr, true); err != nil {
 		return err
 	}
-	_, err := parseClockTime(cfg.Time, time.Now())
+	loc, err := Location(cfg.TimeZone)
+	if err != nil {
+		return err
+	}
+	_, err = parseClockTime(cfg.Time, time.Now(), loc)
 	return err
 }
 
@@ -47,7 +60,7 @@ func Clock(ctx context.Context, cfg *config.ClockConfig, trace io.Writer) (*type
 	}
 	defer func() { _ = s.Close() }()
 	// "now" is taken after connecting, as close to sending as possible.
-	t, err := parseClockTime(cfg.Time, time.Now())
+	t, err := parseClockTime(cfg.Time, time.Now(), s.Params.Location)
 	if err != nil {
 		return nil, err
 	}

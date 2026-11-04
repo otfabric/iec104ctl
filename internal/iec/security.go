@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,7 +43,7 @@ var (
 )
 
 func init() {
-	for c := 0; c < 256; c++ {
+	for c := range 256 {
 		code := uint8(c)
 		if m, ok := sec.MACByCode(code); ok {
 			name := strings.ToLower(m.Name)
@@ -147,7 +148,7 @@ func ParseRoles(list []string) ([]sec.AccessRole, error) {
 // is an authority; any other must be self-signed and is pinned by its fingerprint.
 func ParseTrust(path string) (sec.Trust, error) {
 	var t sec.Trust
-	data, err := os.ReadFile(path) //nolint:gosec // a path the operator gave
+	data, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return t, fmt.Errorf("--security-trust: %w", err)
 	}

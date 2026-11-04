@@ -25,8 +25,7 @@ func WrapError(err error) error {
 	if _, ok := errs.As(err); ok {
 		return err
 	}
-	var neg *iec104.NegativeError
-	if errors.As(err, &neg) {
+	if neg, ok := errors.AsType[*iec104.NegativeError](err); ok {
 		return errs.New(errs.KindNegative, negativeCode(neg.Cause()), negativeMessage(neg), err)
 	}
 	var (
@@ -64,8 +63,7 @@ func WrapError(err error) error {
 	case errors.Is(err, iec104.ErrInvalidOption), errors.Is(err, asdu.ErrInvalidValue), errors.Is(err, asdu.ErrTypeMismatch):
 		return errs.InvalidInput(errs.CodeInvalidInput, fmt.Sprintf("invalid input: %v", err), err)
 	}
-	var netErr net.Error
-	if errors.As(err, &netErr) {
+	if _, ok := errors.AsType[net.Error](err); ok {
 		return errs.New(errs.KindTransport, errs.CodeConnectionLost, fmt.Sprintf("connection error: %v", err), err)
 	}
 	return errs.Internal(err)
@@ -128,8 +126,7 @@ func Fatal(err error) bool {
 	if err == nil {
 		return false
 	}
-	var neg *iec104.NegativeError
-	if errors.As(err, &neg) {
+	if _, ok := errors.AsType[*iec104.NegativeError](err); ok {
 		return false
 	}
 	if errors.Is(err, context.Canceled) {

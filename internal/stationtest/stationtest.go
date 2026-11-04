@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"math"
 	"math/big"
 	"net"
 	"os"
@@ -119,7 +120,7 @@ func Start(t testing.TB, model string, edit ...func(*station.Options)) *Station 
 		t.Fatalf("stationtest: listen: %v", err)
 	}
 	out.Station = st
-	out.Port = uint16(ln.Addr().(*net.TCPAddr).Port)
+	out.Port = port(t, ln.Addr())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -140,7 +141,18 @@ func FreePort(t testing.TB) uint16 {
 		t.Fatal(err)
 	}
 	defer func() { _ = ln.Close() }()
-	return uint16(ln.Addr().(*net.TCPAddr).Port)
+	return port(t, ln.Addr())
+}
+
+// port is the TCP port of a listening address.
+func port(t testing.TB, a net.Addr) uint16 {
+	t.Helper()
+	p := a.(*net.TCPAddr).Port
+	if p > 0 && p <= math.MaxUint16 {
+		return uint16(p)
+	}
+	t.Fatalf("stationtest: port %d", p)
+	return 0
 }
 
 // Certs is a throw-away certificate authority with a server and a client certificate, as

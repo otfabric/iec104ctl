@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -134,7 +135,7 @@ func New(m *Model, opts Options) (*Station, error) {
 		st.points[asdu.IOA(spec.IOA)] = p
 		st.order = append(st.order, asdu.IOA(spec.IOA))
 	}
-	sort.Slice(st.order, func(i, j int) bool { return st.order[i] < st.order[j] })
+	slices.Sort(st.order)
 	for _, spec := range m.Commands {
 		c := &command{spec: spec, typ: commandTypes[strings.ToUpper(strings.TrimSpace(spec.Type))], timeout: time.Duration(spec.SelectTimeout)}
 		if c.timeout == 0 {
@@ -151,7 +152,7 @@ func New(m *Model, opts Options) (*Station, error) {
 		st.files[asdu.IOA(spec.IOA)] = &file{ioa: asdu.IOA(spec.IOA), name: spec.Name, data: server.NewFile(data, sectionSize(spec)), at: started}
 	}
 	if dir := m.Uploads.Dir; dir != "" {
-		if err := os.MkdirAll(m.resolve(dir), 0o755); err != nil { //nolint:gosec // the operator's own directory
+		if err := os.MkdirAll(m.resolve(dir), 0o750); err != nil {
 			return nil, fmt.Errorf("uploads.dir: %w", err)
 		}
 	}
@@ -793,7 +794,7 @@ func (st *Station) directory(s *server.Session, ca asdu.CommonAddr, ioa asdu.IOA
 	st.mu.Lock()
 	out := make([]asdu.FileDirectoryEntry, 0, len(st.files))
 	for _, f := range st.files {
-		out = append(out, asdu.FileDirectoryEntry{IOA: f.ioa, Name: f.name, Length: uint32(f.data.Len()), Time: asdu.At(f.at)})
+		out = append(out, asdu.FileDirectoryEntry{IOA: f.ioa, Name: f.name, Length: fileLength(f.data.Len()), Time: asdu.At(f.at)})
 	}
 	st.mu.Unlock()
 	sort.Slice(out, func(i, j int) bool { return out[i].IOA < out[j].IOA })
@@ -832,7 +833,7 @@ func (st *Station) StoreFile(s *server.Session, _ asdu.CommonAddr, ioa asdu.IOA,
 		for _, sec := range f.Sections {
 			data = append(data, sec...)
 		}
-		if err := os.WriteFile(path, data, 0o644); err != nil { //nolint:gosec // the operator's own directory
+		if err := os.WriteFile(path, data, 0o600); err != nil {
 			st.event(types.ServerEvent{Event: "file-received", Remote: remote(s), CommonAddr: uint16(st.ca), IOA: uint32(ioa), Detail: "not stored: " + err.Error()})
 			return err
 		}
@@ -949,9 +950,7 @@ func (st *Station) simulate(ctx context.Context) {
 		if p.spec.Simulate == nil {
 			continue
 		}
-		st.wg.Add(1)
-		go func() {
-			defer st.wg.Done()
+		st.wg.Go(func() {
 			rng := rand.New(rand.NewPCG(uint64(ioa), 104)) //nolint:gosec // simulation, not security
 			tick := time.NewTicker(time.Duration(p.spec.Simulate.Interval))
 			defer tick.Stop()
@@ -970,12 +969,10 @@ func (st *Station) simulate(ctx context.Context) {
 					st.announce(ioa, asdu.CauseSpontaneous)
 				}
 			}
-		}()
+		})
 	}
 	if d := time.Duration(st.model.Station.CyclicInterval); d > 0 {
-		st.wg.Add(1)
-		go func() {
-			defer st.wg.Done()
+		st.wg.Go(func() {
 			tick := time.NewTicker(d)
 			defer tick.Stop()
 			for {
@@ -993,6 +990,15 @@ func (st *Station) simulate(ctx context.Context) {
 					cancel()
 				}
 			}
-		}()
+		})
 	}
+}
+
+// fileLength is the length of a file of the station as the directory reports it. The
+// model refuses files longer than asdu.MaxFileLength, so the bound never applies.
+func fileLength(n int) uint32 {
+	if n < 0 || n > asdu.MaxFileLength {
+		return asdu.MaxFileLength
+	}
+	return uint32(n)
 }

@@ -1,5 +1,32 @@
 # iec104ctl Releases
 
+## v0.5.0
+
+**Date:** 2026-11-04
+**Previous release:** v0.4.2
+
+### Changed
+
+- Go 1.26 or later is required to build from source. CI tests Go 1.26 and 1.27.
+- Built on go-iec104 v0.2.0, which refuses requests with no information objects and flags time tags outside 1970 to 2069 as invalid.
+- Files iec104ctl writes are now readable by their owner only (mode 0600): `client file get --output`, `server generate-config --output` and the uploads the station stores. The uploads directory is created with mode 0750.
+
+### Fixed
+
+- `client clock --time` refuses a time outside the years 1970 to 2069 in the `--timezone` zone with exit 3, before anything is sent. A time tag carries a two-digit year, so such a time went out marked invalid and a century off.
+- `client command --wait-termination` keeps only the termination of its own command. A station that sent terminations of other objects while it waited could make it use memory without bound.
+
+### Security
+
+- SAST (gosec and opengrep, lowest thresholds): 29 findings → 0. Integer conversions are range-checked where they happen and file paths are cleaned. Three findings are recorded as false positives: the explicit `--tls-insecure` flag, the seeded generator of the simulated values, and the file paths taken from the operator's station model.
+
+### Tests
+
+- Tests with a hostile station against the client commands and a hostile controlling station against `server start`: malformed frames, empty requests, floods, silent and slow peers, out-of-order and oversized uploads, extra connections. Each one checks a time bound, the exit code and that no goroutines are left behind.
+- Boundary tests for every range-checked value and new fuzz targets for the host, port, filter, command, clock, security-name, value, allow-list and environment parsers.
+
+---
+
 ## v0.4.2
 
 **Date:** 2026-11-02

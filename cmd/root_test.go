@@ -103,7 +103,7 @@ func TestFlagsDocumentTheirEnvironment(t *testing.T) {
 	r := run(t, "client", "monitor", "--help").want(t, 0)
 	seen := map[string]bool{}
 	flags := r.stdout[strings.Index(r.stdout, "\nFlags:\n"):strings.Index(r.stdout, "\nGlobal Flags:")]
-	for _, line := range strings.Split(flags, "\n") {
+	for line := range strings.SplitSeq(flags, "\n") {
 		i := strings.Index(line, "[env: ")
 		if !strings.HasPrefix(strings.TrimSpace(line), "--") || strings.Contains(line, "--help") {
 			continue

@@ -7,7 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sort"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -69,13 +70,8 @@ func (t *tally) add(a *asdu.ASDU) {
 
 func (t *tally) station(ca asdu.CommonAddr) types.ScanStation {
 	st := types.ScanStation{CommonAddr: uint16(ca), Status: "found", Objects: t.objects}
-	ids := make([]int, 0, len(t.byType))
-	for id := range t.byType {
-		ids = append(ids, int(id))
-	}
-	sort.Ints(ids)
-	for _, id := range ids {
-		st.Types = append(st.Types, types.TypeCount{Type: asdu.TypeID(id).String(), Count: t.byType[asdu.TypeID(id)]})
+	for _, id := range slices.Sorted(maps.Keys(t.byType)) {
+		st.Types = append(st.Types, types.TypeCount{Type: id.String(), Count: t.byType[id]})
 	}
 	return st
 }
@@ -156,14 +152,10 @@ func scanBroadcast(ctx context.Context, cfg *config.ScanConfig, trace io.Writer)
 			stations[ca] = &tally{}
 		}
 	}
-	cas := make([]int, 0, len(stations))
-	for ca := range stations {
-		cas = append(cas, int(ca))
-	}
-	sort.Ints(cas)
+	cas := slices.Sorted(maps.Keys(stations))
 	res := &types.ScanResult{Target: s.Target.String(), Method: ScanBroadcast, Probed: 1, DurationMs: ms(time.Since(begin)), Stations: []types.ScanStation{}}
 	for _, ca := range cas {
-		res.Stations = append(res.Stations, stations[asdu.CommonAddr(ca)].station(asdu.CommonAddr(ca)))
+		res.Stations = append(res.Stations, stations[ca].station(ca))
 	}
 	res.Found = len(res.Stations)
 	return res, nil
@@ -182,8 +174,9 @@ func scanSweep(ctx context.Context, cfg *config.ScanConfig, trace, progress io.W
 	begin := time.Now()
 	res := &types.ScanResult{Target: s.Target.String(), Method: ScanSweep, Stations: []types.ScanStation{}}
 	delay := time.Duration(cfg.Delay) * time.Millisecond
-	for ca := uint32(cfg.Start); ca <= uint32(cfg.End); ca++ {
-		if ca != uint32(cfg.Start) && delay > 0 {
+	for v := uint32(cfg.Start); v <= uint32(cfg.End); v++ {
+		ca := asdu.CommonAddr(v & 0xFFFF)
+		if v != uint32(cfg.Start) && delay > 0 {
 			select {
 			case <-ctx.Done():
 				return nil, WrapError(ctx.Err())
@@ -191,7 +184,7 @@ func scanSweep(ctx context.Context, cfg *config.ScanConfig, trace, progress io.W
 			}
 		}
 		res.Probed++
-		data, err := s.Interrogate(ctx, asdu.CommonAddr(ca), asdu.QOIStation)
+		data, err := s.Interrogate(ctx, ca, asdu.QOIStation)
 		var st types.ScanStation
 		var neg *iec104.NegativeError
 		switch {
@@ -200,7 +193,7 @@ func scanSweep(ctx context.Context, cfg *config.ScanConfig, trace, progress io.W
 			for _, a := range data {
 				t.add(a)
 			}
-			st = t.station(asdu.CommonAddr(ca))
+			st = t.station(ca)
 			res.Found++
 		case errors.As(err, &neg) && neg.Cause() == asdu.CauseUnknownCommonAddr:
 			continue

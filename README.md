@@ -1,6 +1,6 @@
 # iec104ctl — IEC 60870-5-104 Command-Line Tool: Interrogate, Monitor, Command, Transfer Files & Simulate an RTU
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI Status](https://github.com/otfabric/iec104ctl/actions/workflows/ci.yml/badge.svg)](https://github.com/otfabric/iec104ctl/actions/workflows/ci.yml)
 [![Code Coverage](https://codecov.io/gh/otfabric/iec104ctl/graph/badge.svg)](https://codecov.io/gh/otfabric/iec104ctl)
@@ -300,7 +300,7 @@ Run the same commands again. They always fetch the latest release and overwrite 
 
 ### Build from source
 
-Requires Go 1.25 or later:
+Requires Go 1.26 or later:
 
 ```console
 git clone https://github.com/otfabric/iec104ctl.git
@@ -476,7 +476,7 @@ The parameters of IEC 60870-5-104 clause 9 default to the standard values. Both 
 
 A station behind an IEC 60870-5-101 gateway may use shorter address fields. `--cot-size` (1 or 2 octets), `--ca-size` (1 or 2) and `--ioa-size` (1 to 3) select them; the defaults are the IEC 104 values 2, 2 and 3. If every value looks scrambled, or the station closes the connection on the first request, these are the first thing to check.
 
-**Time zone.** A time tag on the wire carries no zone. `--timezone` says which zone the station keeps its clock in: `utc` (default), `local`, or an IANA name such as `Europe/Brussels`. It applies to the time tags iec104ctl prints and to the time `client clock` sends.
+**Time zone.** A time tag on the wire carries no zone. `--timezone` says which zone the station keeps its clock in: `utc` (default), `local`, or an IANA name such as `Europe/Brussels`. It applies to the time tags iec104ctl prints and to the time `client clock` sends. A time tag carries a two-digit year, read as 1970 to 2069, so `client clock --time` refuses a time outside those years in that zone (exit 3) instead of sending it.
 
 ### Common Commands
 

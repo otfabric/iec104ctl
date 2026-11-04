@@ -1,9 +1,9 @@
 module github.com/otfabric/iec104ctl
 
-go 1.25.0
+go 1.26.0
 
 require (
-	github.com/otfabric/go-iec104 v0.1.2
+	github.com/otfabric/go-iec104 v0.2.0
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 )
