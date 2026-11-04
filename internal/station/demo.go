@@ -82,6 +82,7 @@ files:
       This file is served by the file transfer of IEC 60870-5-104.
 
 # Take the files controlling stations deliver. Add "dir: ./uploads" to keep them on disk.
+# At most max_files (64) files of max_file_size (1 MiB), max_total_size (16 MiB) together.
 uploads:
   accept: true
 `

@@ -92,7 +92,8 @@ type Station struct {
 	commands map[asdu.IOA]*command
 	selected map[asdu.IOA]selection
 	files    map[asdu.IOA]*file
-	sessions map[uint64]bool // sessions that have been announced
+	uploads  map[asdu.IOA]upload // the delivered files, by address
+	sessions map[uint64]bool     // sessions that have been announced
 	// offset is what a clock synchronization moved the station's clock by.
 	offset time.Duration
 
@@ -123,6 +124,7 @@ func New(m *Model, opts Options) (*Station, error) {
 		commands: map[asdu.IOA]*command{},
 		selected: map[asdu.IOA]selection{},
 		files:    map[asdu.IOA]*file{},
+		uploads:  map[asdu.IOA]upload{},
 		sessions: map[uint64]bool{},
 	}
 	for _, spec := range m.Points {
@@ -544,9 +546,9 @@ func (st *Station) resetProcess(s *server.Session, req *asdu.ASDU) {
 		_ = s.Negative(req)
 		return
 	}
-	_ = s.Confirm(req)
 	detail := "pending events"
 	if q == asdu.ResetProcessGeneral {
+		// The values are back before the confirmation: whoever acts on it sees them.
 		detail = "process: values back to the model"
 		st.mu.Lock()
 		for _, p := range st.points {
@@ -554,6 +556,9 @@ func (st *Station) resetProcess(s *server.Session, req *asdu.ASDU) {
 		}
 		st.selected = map[asdu.IOA]selection{}
 		st.mu.Unlock()
+	}
+	_ = s.Confirm(req)
+	if q == asdu.ResetProcessGeneral {
 		_ = st.srv.Enqueue(asdu.New(asdu.CauseInitialized, st.ca, asdu.EndOfInitialization{Cause: asdu.InitRemoteReset}))
 	}
 	st.event(types.ServerEvent{Event: "reset", Remote: remote(s), CommonAddr: uint16(st.ca), Detail: detail})
@@ -816,24 +821,83 @@ func (st *Station) AcceptFile(s *server.Session, ca asdu.CommonAddr, ioa asdu.IO
 	st.mu.Lock()
 	_, isPoint := st.points[ioa]
 	_, isCommand := st.commands[ioa]
-	st.mu.Unlock()
-	ok := ca == st.ca && !isPoint && !isCommand
-	if !ok {
-		st.event(types.ServerEvent{Event: "file-received", Remote: remote(s), CommonAddr: uint16(st.ca), IOA: uint32(ioa), Detail: fmt.Sprintf("refused: the address is in use (%d octets offered)", length)})
+	reason := ""
+	switch {
+	case ca != st.ca || isPoint || isCommand:
+		reason = "the address is in use"
+	default:
+		reason = st.overLimit(ioa, length)
 	}
-	return ok
+	st.mu.Unlock()
+	if reason != "" {
+		st.event(types.ServerEvent{Event: "file-received", Remote: remote(s), CommonAddr: uint16(st.ca), IOA: uint32(ioa), Detail: fmt.Sprintf("refused: %s (%d octets offered)", reason, length)})
+	}
+	return reason == ""
+}
+
+// upload is what the station keeps of a delivered file for its limits.
+type upload struct {
+	size int
+	path string // where it was written, or ""
+}
+
+// overLimit says why a file of length octets delivered at ioa would exceed the upload
+// limits of the model, or "" when it fits. A file at an address that already holds a
+// delivered file replaces it. st.mu is held.
+func (st *Station) overLimit(ioa asdu.IOA, length int) string {
+	maxFiles, maxSize, maxTotal := st.model.Uploads.limits()
+	if length > maxSize {
+		return fmt.Sprintf("larger than uploads.max_file_size %d", maxSize)
+	}
+	_, replaces := st.uploads[ioa]
+	if !replaces && len(st.uploads) >= maxFiles {
+		return fmt.Sprintf("uploads.max_files %d reached", maxFiles)
+	}
+	total := length
+	for a, u := range st.uploads {
+		if a != ioa {
+			total += u.size
+		}
+	}
+	if total > maxTotal {
+		return fmt.Sprintf("uploads.max_total_size %d reached", maxTotal)
+	}
+	return ""
 }
 
 // StoreFile implements server.FileSink.
 func (st *Station) StoreFile(s *server.Session, _ asdu.CommonAddr, ioa asdu.IOA, name uint16, f server.File) error {
 	detail := fmt.Sprintf("name %d, %d octets in %d sections", name, f.Len(), len(f.Sections))
+	path := ""
 	if dir := st.model.Uploads.Dir; dir != "" {
-		path := filepath.Join(st.model.resolve(dir), fmt.Sprintf("ioa-%d-name-%d.bin", ioa, name))
+		path = filepath.Join(st.model.resolve(dir), fmt.Sprintf("ioa-%d-name-%d.bin", ioa, name))
+	}
+	// Uploads of several sessions may have been accepted at once: the limits are checked
+	// again, and the file's place reserved, under one lock.
+	st.mu.Lock()
+	reason := st.overLimit(ioa, f.Len())
+	old, hadOld := st.uploads[ioa]
+	if reason == "" {
+		st.uploads[ioa] = upload{size: f.Len(), path: path}
+	}
+	st.mu.Unlock()
+	if reason != "" {
+		st.event(types.ServerEvent{Event: "file-received", Remote: remote(s), CommonAddr: uint16(st.ca), IOA: uint32(ioa), Detail: "not stored: " + reason})
+		return errors.New(reason)
+	}
+	if path != "" {
 		var data []byte
 		for _, sec := range f.Sections {
 			data = append(data, sec...)
 		}
 		if err := os.WriteFile(path, data, 0o600); err != nil {
+			st.mu.Lock()
+			if hadOld {
+				st.uploads[ioa] = old
+			} else {
+				delete(st.uploads, ioa)
+			}
+			st.mu.Unlock()
 			st.event(types.ServerEvent{Event: "file-received", Remote: remote(s), CommonAddr: uint16(st.ca), IOA: uint32(ioa), Detail: "not stored: " + err.Error()})
 			return err
 		}
@@ -842,6 +906,10 @@ func (st *Station) StoreFile(s *server.Session, _ asdu.CommonAddr, ioa asdu.IOA,
 	st.mu.Lock()
 	st.files[ioa] = &file{ioa: ioa, name: name, data: f, at: st.opts.Now().Add(st.offset)}
 	st.mu.Unlock()
+	// The file it replaces is no longer served; left on disk it would escape the limits.
+	if old.path != "" && old.path != path && os.Remove(old.path) == nil {
+		detail += ", replaces " + old.path
+	}
 	st.event(types.ServerEvent{Event: "file-received", Remote: remote(s), CommonAddr: uint16(st.ca), IOA: uint32(ioa), Detail: detail})
 	return nil
 }

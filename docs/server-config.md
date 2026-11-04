@@ -134,9 +134,12 @@ Give exactly one of `path`, `content` and `size`. The files are listed in the di
 | Field | Meaning |
 |-------|---------|
 | `accept` | Take the files controlling stations deliver (`client file put`), at any address that is not a point or a command. Without it a delivery is refused |
-| `dir` | Write delivered files to this directory (relative to the model file, created if missing) as `ioa-<ioa>-name-<name>.bin`. Without it they are kept in memory |
+| `dir` | Write delivered files to this directory (relative to the model file, created if missing, mode 0750) as `ioa-<ioa>-name-<name>.bin` (mode 0600). Without it they are kept in memory |
+| `max_files` | The number of delivered files kept. Default 64 |
+| `max_file_size` | The largest file taken, in octets. Default 1048576 (1 MiB), at most 16777215 |
+| `max_total_size` | The octets of all delivered files together. Default 16777216 (16 MiB) |
 
-A delivered file appears in the directory and can be fetched back.
+A delivered file appears in the directory and can be fetched back. A file delivered to an address that already holds a delivered file replaces it; with `dir`, the file it replaces is removed from the directory. A delivery beyond a limit is refused when it is announced (the event says which limit), so the limits bound both memory and disk. Files of the model's `files` do not count.
 
 ## What the station answers
 

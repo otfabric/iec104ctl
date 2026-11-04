@@ -140,6 +140,39 @@ type UploadSpec struct {
 	// Dir, when set, is where delivered files are written, as ioa-<ioa>-name-<name>.bin
 	// (relative to the model file). Without it they are kept in memory.
 	Dir string `yaml:"dir,omitempty" json:"dir,omitempty"`
+	// MaxFiles is the number of delivered files the station keeps. A delivery to another
+	// address beyond it is refused; one to an address that already holds a delivered file
+	// replaces it. 0 means DefaultUploadMaxFiles.
+	MaxFiles int `yaml:"max_files,omitempty" json:"max_files,omitempty"`
+	// MaxFileSize is the largest file the station takes, in octets. 0 means
+	// DefaultUploadMaxFileSize; the protocol allows up to 16 777 215.
+	MaxFileSize int `yaml:"max_file_size,omitempty" json:"max_file_size,omitempty"`
+	// MaxTotalSize is the number of octets of all delivered files together. 0 means
+	// DefaultUploadMaxTotalSize.
+	MaxTotalSize int `yaml:"max_total_size,omitempty" json:"max_total_size,omitempty"`
+}
+
+// The limits of uploads when the model does not set them.
+const (
+	DefaultUploadMaxFiles     = 64
+	DefaultUploadMaxFileSize  = 1 << 20
+	DefaultUploadMaxTotalSize = 16 << 20
+)
+
+// limits returns the upload limits with the defaults filled in.
+func (u UploadSpec) limits() (files, fileSize, total int) {
+	files, fileSize, total = u.MaxFiles, u.MaxFileSize, u.MaxTotalSize
+	if files == 0 {
+		files = DefaultUploadMaxFiles
+	}
+	if fileSize == 0 {
+		fileSize = DefaultUploadMaxFileSize
+	}
+	if total == 0 {
+		total = DefaultUploadMaxTotalSize
+	}
+	// A smaller total than the default file size makes the total the file size too.
+	return files, min(fileSize, total), total
 }
 
 // monitorTypes are the point types a model may use.
@@ -350,6 +383,15 @@ func (m *Model) Validate() error {
 	}
 	if m.Uploads.Dir != "" && !m.Uploads.Accept {
 		bad("uploads.dir is set but uploads.accept is not")
+	}
+	if u := m.Uploads; u.MaxFiles < 0 || u.MaxFileSize < 0 || u.MaxTotalSize < 0 {
+		bad("uploads: max_files, max_file_size and max_total_size cannot be negative")
+	}
+	if m.Uploads.MaxFileSize > maxIOA {
+		bad("uploads.max_file_size %d: the maximum is %d", m.Uploads.MaxFileSize, maxIOA)
+	}
+	if _, _, total := m.Uploads.limits(); m.Uploads.MaxFileSize > total {
+		bad("uploads.max_file_size %d is larger than uploads.max_total_size %d", m.Uploads.MaxFileSize, total)
 	}
 
 	if len(problems) == 0 {
