@@ -546,9 +546,9 @@ func (st *Station) resetProcess(s *server.Session, req *asdu.ASDU) {
 		_ = s.Negative(req)
 		return
 	}
-	_ = s.Confirm(req)
 	detail := "pending events"
 	if q == asdu.ResetProcessGeneral {
+		// The values are back before the confirmation: whoever acts on it sees them.
 		detail = "process: values back to the model"
 		st.mu.Lock()
 		for _, p := range st.points {
@@ -556,6 +556,9 @@ func (st *Station) resetProcess(s *server.Session, req *asdu.ASDU) {
 		}
 		st.selected = map[asdu.IOA]selection{}
 		st.mu.Unlock()
+	}
+	_ = s.Confirm(req)
+	if q == asdu.ResetProcessGeneral {
 		_ = st.srv.Enqueue(asdu.New(asdu.CauseInitialized, st.ca, asdu.EndOfInitialization{Cause: asdu.InitRemoteReset}))
 	}
 	st.event(types.ServerEvent{Event: "reset", Remote: remote(s), CommonAddr: uint16(st.ca), Detail: detail})
