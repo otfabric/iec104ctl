@@ -26,7 +26,7 @@ jobs:
       test-exclude-regex: "/example(s)?($|/)"
       coverpkg: ./...
       fuzz-time: 10s
-      policy-version: v1.4.1
+      policy-version: v1.4.2
     secrets: inherit
 
   # go-ci gates the total; this gates each package (COVER_PKG_MIN).
