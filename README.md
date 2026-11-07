@@ -10,9 +10,23 @@
 
 It is built for commissioning and site acceptance tests, point-to-point checks, troubleshooting a link between a control centre and a substation, and hardware-free test setups. Output can be plain text, a table or JSON with stable exit codes, so it works in scripts and CI. It is written in Go on top of [go-iec104](https://github.com/otfabric/go-iec104).
 
-**Quick links:** [Quick start](#quick-start) · [Features](#features) · [Installation](#installation) · [IEC 104 in two minutes](#iec-104-in-two-minutes) · [Connecting](#connecting-to-a-station) · [Commands](#common-commands) · [Simulated station](#simulate-a-station) · [FAQ](#faq)
+**Quick links:** [Quick start](#quick-start) · [Features](#features) · [Install](#install) · [IEC 104 in two minutes](#iec-104-in-two-minutes) · [Connecting](#connecting-to-a-station) · [Commands](#common-commands) · [Simulated station](#simulate-a-station) · [FAQ](#faq)
 
 > **Responsible use:** iec104ctl sends real telecontrol requests. Only use it on stations and networks you own or are authorized to test. `client command` operates switchgear and changes set points, `client clock` and `client reset` change the station itself, and `client file put` can deliver a configuration: know what an address controls before you send to it. A station often accepts few connections and sends its events on only one: connecting to a station that is in service can take its events away from the control centre.
+
+## Install
+
+```bash
+curl -fsSL https://get.otfabric.io/iec104ctl | sh
+```
+
+```powershell
+irm https://get.otfabric.io/iec104ctl.ps1 | iex
+```
+
+Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, arm64). The installer verifies the release's SHA-256 checksum, installs per user without `sudo` (`~/.local/bin`, Windows `%LOCALAPPDATA%\OTFabric\bin`), and upgrades in place when run again. Pin a version with `OTF_VERSION=x.y.z`; for CI, containers and device images use `OTF_UNMANAGED_INSTALL=<dir>`; all options: [otfabric/install](https://github.com/otfabric/install#options). For offline machines, the archives and checksums are on [Releases](https://github.com/otfabric/iec104ctl/releases).
+
+From source (Go 1.26+): `go install github.com/otfabric/iec104ctl@latest`
 
 ---
 
@@ -27,13 +41,13 @@ It is built for commissioning and site acceptance tests, point-to-point checks, 
 - **Simulate an RTU** — `server start` serves a station from a YAML model: values that change by themselves, commands with select-before-operate, events that are queued and delivered, redundant connections.
 - **Secure** — IEC 62351-3 TLS with mutual authentication, and IEC 62351-5 application-layer security (`--secure`: certificates by authority or pinned, HMAC or AES-256-GCM, roles at the station), for client and server, separately or together.
 - **Script-friendly** — `--format text|json|table`, a single JSON error object on failure, stable exit codes and `IEC104CTL_*` environment variables.
-- **Pre-built binaries** — Linux, macOS and Windows (x86-64 and ARM) from [GitHub Releases](https://github.com/otfabric/iec104ctl/releases), with SHA-256 checksums; no runtime to install.
+- **One-line install** — Linux, macOS and Windows (x86-64 and ARM), see [Install](#install); a single binary, no runtime to install.
 
 ---
 
 ## Quick start
 
-Download a binary from [GitHub Releases](https://github.com/otfabric/iec104ctl/releases) (see [Installation](#installation) for copy-paste commands for Linux, macOS and Windows, or build from source). No station at hand? Start the built-in demo station in one terminal:
+Install iec104ctl (see [Install](#install)). No station at hand? Start the built-in demo station in one terminal:
 
 ```console
 iec104ctl server start
@@ -100,12 +114,12 @@ They combine well: use iec104ctl to drive and check a station from the command l
 
 ## Table of Contents
 
+- [Install](#install)
 - [Why iec104ctl?](#why-iec104ctl)
 - [Quick start](#quick-start)
 - [How it compares](#how-it-compares)
 - [Use cases](#use-cases)
 - [Features](#features)
-- [Installation](#installation)
 - [IEC 104 in two minutes](#iec-104-in-two-minutes)
 - [Usage](#usage)
   - [General CLI usage](#general-cli-usage)
@@ -172,146 +186,6 @@ iec104ctl
 ├── discover             Find IEC 60870-5-104 stations on subnets
 ├── completion           Generate shell completion script (bash|zsh|fish|powershell)
 └── version              Print version
-```
-
-## Installation
-
-The easiest way to install iec104ctl is to download a pre-built binary from the [GitHub Releases page](https://github.com/otfabric/iec104ctl/releases). No Go toolchain is required.
-
-| Platform | CPU | Download |
-|---|---|---|
-| Linux | x86-64 | `iec104ctl-<version>-linux-amd64.tar.gz` |
-| Linux | 64-bit ARM (Raspberry Pi 4/5 with a 64-bit OS, AWS Graviton) | `iec104ctl-<version>-linux-arm64.tar.gz` |
-| Linux | 32-bit ARM (Raspberry Pi with a 32-bit OS) | `iec104ctl-<version>-linux-armv7.tar.gz` |
-| macOS | Apple Silicon (M1 and later) | `iec104ctl-<version>-darwin-arm64.tar.gz` |
-| macOS | Intel | `iec104ctl-<version>-darwin-amd64.tar.gz` |
-| Windows | x86-64 | `iec104ctl-<version>-windows-amd64.zip` |
-| Windows | ARM64 | `iec104ctl-<version>-windows-arm64.zip` |
-
-Each release also contains `iec104ctl-<version>-checksums.txt` (SHA-256) so you can verify your download. The commands below fetch the **latest** release, verify its checksum and install it. Afterwards, check that it works:
-
-```console
-iec104ctl version
-```
-
-### Linux
-
-```bash
-# 1. Find the latest version and your CPU architecture
-VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/otfabric/iec104ctl/releases/latest | sed 's|.*/v||')
-case "$(uname -m)" in
-  x86_64)         ARCH=amd64 ;;
-  aarch64|arm64)  ARCH=arm64 ;;
-  armv7l)         ARCH=armv7 ;;
-  *) echo "Unsupported architecture: $(uname -m)" ;;
-esac
-
-# 2. Download the archive and the checksum file
-FILE="iec104ctl-${VERSION}-linux-${ARCH}.tar.gz"
-BASE="https://github.com/otfabric/iec104ctl/releases/download/v${VERSION}"
-curl -fsSLO "${BASE}/${FILE}"
-curl -fsSLO "${BASE}/iec104ctl-${VERSION}-checksums.txt"
-
-# 3. Verify the download (should print "OK")
-grep "${FILE}" "iec104ctl-${VERSION}-checksums.txt" | sha256sum -c -
-
-# 4. Extract and install (the binary in the archive carries the version and platform in its name)
-mkdir -p iec104ctl-dl && tar -xzf "${FILE}" -C iec104ctl-dl
-sudo install -m 0755 "$(find iec104ctl-dl -type f -name 'iec104ctl*' | head -n1)" /usr/local/bin/iec104ctl
-```
-
-No `sudo`? Install into your home directory instead (and make sure `~/.local/bin` is in your `PATH`):
-
-```bash
-mkdir -p ~/.local/bin
-install -m 0755 "$(find iec104ctl-dl -type f -name 'iec104ctl*' | head -n1)" ~/.local/bin/iec104ctl
-```
-
-### macOS
-
-```bash
-# 1. Find the latest version and your CPU architecture (arm64 = Apple Silicon, x86_64 = Intel)
-VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/otfabric/iec104ctl/releases/latest | sed 's|.*/v||')
-case "$(uname -m)" in
-  arm64)   ARCH=arm64 ;;
-  x86_64)  ARCH=amd64 ;;
-esac
-
-# 2. Download the archive and the checksum file
-FILE="iec104ctl-${VERSION}-darwin-${ARCH}.tar.gz"
-BASE="https://github.com/otfabric/iec104ctl/releases/download/v${VERSION}"
-curl -fsSLO "${BASE}/${FILE}"
-curl -fsSLO "${BASE}/iec104ctl-${VERSION}-checksums.txt"
-
-# 3. Verify the download (should print "OK")
-grep "${FILE}" "iec104ctl-${VERSION}-checksums.txt" | shasum -a 256 -c -
-
-# 4. Extract and install (the binary in the archive carries the version and platform in its name)
-mkdir -p iec104ctl-dl && tar -xzf "${FILE}" -C iec104ctl-dl
-sudo install -m 0755 "$(find iec104ctl-dl -type f -name 'iec104ctl*' | head -n1)" /usr/local/bin/iec104ctl
-```
-
-If you downloaded the archive with a web browser instead of `curl` and macOS refuses to run the binary ("cannot be verified"), remove the quarantine flag: `xattr -d com.apple.quarantine /usr/local/bin/iec104ctl`.
-
-### Windows (PowerShell)
-
-```powershell
-# 1. Find the latest version and your CPU architecture
-$version = (Invoke-RestMethod https://api.github.com/repos/otfabric/iec104ctl/releases/latest).tag_name.TrimStart('v')
-$arch    = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'amd64' }
-
-# 2. Download the archive and the checksum file
-$file = "iec104ctl-$version-windows-$arch.zip"
-$base = "https://github.com/otfabric/iec104ctl/releases/download/v$version"
-Invoke-WebRequest "$base/$file" -OutFile "$env:TEMP\$file"
-Invoke-WebRequest "$base/iec104ctl-$version-checksums.txt" -OutFile "$env:TEMP\iec104ctl-checksums.txt"
-
-# 3. Verify the download (throws an error on mismatch)
-$expected = ((Select-String -Path "$env:TEMP\iec104ctl-checksums.txt" -Pattern $file).Line -split '\s+')[0]
-$actual   = (Get-FileHash "$env:TEMP\$file" -Algorithm SHA256).Hash
-if ($expected -ne $actual) { throw "Checksum mismatch for $file" }
-
-# 4. Extract to a per-user folder and name the program iec104ctl.exe
-#    (the .exe in the archive carries the version and platform in its name)
-$dir = "$env:LOCALAPPDATA\Programs\iec104ctl"
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-Expand-Archive "$env:TEMP\$file" -DestinationPath "$env:TEMP\iec104ctl-dl" -Force
-$exe = Get-ChildItem "$env:TEMP\iec104ctl-dl" -Recurse -Filter 'iec104ctl*.exe' | Select-Object -First 1
-Copy-Item $exe.FullName "$dir\iec104ctl.exe" -Force
-
-# 5. Add iec104ctl to your user PATH (then open a new terminal)
-$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-if ($userPath -notlike "*$dir*") {
-  [Environment]::SetEnvironmentVariable('Path', "$userPath;$dir", 'User')
-}
-```
-
-If Windows SmartScreen warns about an unrecognised app, choose **More info → Run anyway**.
-
-### Manual download
-
-1. Open the [latest release](https://github.com/otfabric/iec104ctl/releases/latest).
-2. Download the archive for your platform from the table above.
-3. Extract it, rename the binary to `iec104ctl` (`iec104ctl.exe` on Windows) and move it to a folder on your `PATH`.
-
-### Update
-
-Run the same commands again. They always fetch the latest release and overwrite the previous binary.
-
-### Build from source
-
-Requires Go 1.26 or later:
-
-```console
-git clone https://github.com/otfabric/iec104ctl.git
-cd iec104ctl
-make build
-```
-
-`make build` runs the checks and writes the binary to **`bin/iec104ctl`** (see [Building](#building)). With a Go toolchain you can also install straight from the module:
-
-```console
-go install github.com/otfabric/iec104ctl@latest
 ```
 
 ---
