@@ -99,6 +99,9 @@ interfaces by default and accepts any client: use --listen and --allow to restri
 			_ = c.MarkFlagFilename(f, "pem", "crt", "cer", "key")
 		}
 		_ = cli.RegisterEnumFlagCompletion(c, "roles", iec.RoleNames())
+		_ = cli.RegisterEnumFlagCompletion(c, "ca-size", []string{"1", "2"})
+		_ = cli.RegisterEnumFlagCompletion(c, "cot-size", []string{"1", "2"})
+		_ = cli.RegisterEnumFlagCompletion(c, "ioa-size", []string{"1", "2", "3"})
 	})
 	cmd.RunE = func(cmd *cobra.Command, _ []string) error {
 		cfg.Debug = cli.Debug(cmd)

@@ -46,7 +46,7 @@ func TestVersionPrintsTheBuiltVersion(t *testing.T) {
 	if want == "" {
 		t.Fatal("IEC104CTL_E2E_VERSION is not set; run make e2e")
 	}
-	if !strings.Contains(output, "iec104ctl") || !strings.Contains(output, want) {
+	if !strings.HasPrefix(output, "iec104ctl "+want+" (") {
 		t.Fatalf("output does not name iec104ctl %s:\n%s", want, output)
 	}
 }

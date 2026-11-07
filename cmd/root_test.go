@@ -19,15 +19,6 @@ import (
 )
 
 func TestVersionHelpAndUsage(t *testing.T) {
-	SetBuildMeta("1.2.3", "v1.2.3", "abc1234", "2026-01-31T12:00:00Z")
-	t.Cleanup(func() { SetBuildMeta("dev", "", "", "") })
-	run(t, "version").want(t, 0).has(t, "iec104ctl version: 1.2.3", "tag:         v1.2.3", "commit:      abc1234", "build date:  2026-01-31T12:00:00Z", "go version:", "platform:")
-	SetBuildMeta(" ", "", "", "")
-	r := run(t, "version").want(t, 0).has(t, "iec104ctl version: (unknown)")
-	if strings.Contains(r.stdout, "commit:") {
-		t.Errorf("empty build metadata is printed:\n%s", r.stdout)
-	}
-
 	run(t).want(t, 0).has(t, "Available Commands", "client", "server", "discover", "completion", "version")
 	run(t, "client").want(t, 0).has(t, "interrogate", "monitor", "command")
 	run(t, "server").want(t, 0).has(t, "start", "generate-config")
@@ -68,6 +59,13 @@ func TestCompletion(t *testing.T) {
 		{[]string{"client", "reset", "--qualifier", ""}, []string{"events", "process"}},
 		{[]string{"client", "clock", "--timezone", ""}, []string{"utc", "local"}},
 		{[]string{"server", "generate-config", "--format", ""}, []string{"yaml", "json"}},
+		{[]string{"server", "start", "--roles", ""}, []string{"viewer", "operator"}},
+		{[]string{"server", "start", "--ioa-size", ""}, []string{"1", "2", "3"}},
+		{[]string{"client", "interrogate", "--cot-size", ""}, []string{"1", "2"}},
+		{[]string{"server", "start", "--config", ""}, []string{"yaml", "json", ":8"}},
+		{[]string{"client", "interrogate", "--security-cert", ""}, []string{"pem", ":8"}},
+		{[]string{"client", "interrogate", "--ip", ""}, []string{":4"}},
+		{[]string{"discover", "--format", ""}, []string{"json"}},
 		{[]string{"completion", ""}, []string{"bash", "zsh", "fish", "powershell"}},
 	} {
 		r := run(t, append([]string{cobra.ShellCompNoDescRequestCmd}, c.args...)...).want(t, 0)

@@ -80,10 +80,19 @@ func connCompletion(cmd *cobra.Command) {
 			_ = cmd.MarkFlagFilename(f, "pem", "crt", "cer", "key")
 		}
 	}
+	sizeCompletion(cmd)
 	if cmd.Flags().Lookup("mal") != nil {
 		_ = cli.RegisterEnumFlagCompletion(cmd, "mal", iec.MACNames())
 		_ = cli.RegisterEnumFlagCompletion(cmd, "dpa", iec.DPANames())
 	}
+}
+
+// sizeCompletion completes the octet counts of the ASDU fields: the sizes IEC 60870-5-101
+// allows, of which IEC 104 uses the largest.
+func sizeCompletion(cmd *cobra.Command) {
+	_ = cli.RegisterEnumFlagCompletion(cmd, "ca-size", []string{"1", "2"})
+	_ = cli.RegisterEnumFlagCompletion(cmd, "cot-size", []string{"1", "2"})
+	_ = cli.RegisterEnumFlagCompletion(cmd, "ioa-size", []string{"1", "2", "3"})
 }
 
 // typeCompletion completes --type with the names of the type identifications.

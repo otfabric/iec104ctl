@@ -9,13 +9,15 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 
 	"github.com/otfabric/iec104ctl/cmd/client"
 	"github.com/otfabric/iec104ctl/cmd/discover"
 	"github.com/otfabric/iec104ctl/cmd/server"
+	"github.com/otfabric/iec104ctl/internal/buildinfo"
+	clihelp "github.com/otfabric/iec104ctl/internal/cli"
+	"github.com/otfabric/iec104ctl/internal/config"
 	"github.com/otfabric/iec104ctl/internal/errs"
 	"github.com/otfabric/iec104ctl/internal/runner"
 	"github.com/spf13/cobra"
@@ -61,34 +63,39 @@ stderr. Exit codes are stable: see docs/exitcodes.md.`,
 		newCompletionCmd(),
 		newVersionCmd(),
 	)
+	// Every other flag and argument completes no file names, except these files.
+	clihelp.CompleteRest(root, map[string][]string{
+		"config": {"yaml", "yml", "json"}, "input": nil, "output": nil,
+		"security-cert": pemFiles, "security-key": pemFiles, "security-trust": pemFiles,
+		"tls-ca": pemFiles, "tls-cert": pemFiles, "tls-key": pemFiles, "tls-client-ca": pemFiles,
+	}, nil)
 	return root
 }
 
+// pemFiles are the extensions of the certificate and key files the TLS flags take.
+var pemFiles = []string{"pem", "crt", "cer", "key"}
+
 func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print the version of iec104ctl",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, _ []string) {
-			out := cmd.OutOrStdout()
-			ver := strings.TrimSpace(buildMeta.version)
-			if ver == "" {
-				ver = "(unknown)"
+		Long: `Print the version of iec104ctl on one line: the version, the git tag and commit it
+was built from, the build date, the Go version and the platform. --json (or
+IEC104CTL_FORMAT=json) prints the same as one JSON object.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			info := buildinfo.Resolve("iec104ctl", buildMeta.version, buildMeta.tag, buildMeta.commit, buildMeta.buildDate)
+			line := info.String()
+			asJSON, _ := cmd.Flags().GetBool("json")
+			if asJSON || strings.EqualFold(strings.TrimSpace(config.Getenv("IEC104CTL_FORMAT")), "json") {
+				line = info.JSON()
 			}
-			_, _ = fmt.Fprintf(out, "iec104ctl version: %s\n", ver)
-			if s := strings.TrimSpace(buildMeta.tag); s != "" {
-				_, _ = fmt.Fprintf(out, "tag:         %s\n", s)
-			}
-			if s := strings.TrimSpace(buildMeta.commit); s != "" {
-				_, _ = fmt.Fprintf(out, "commit:      %s\n", s)
-			}
-			if s := strings.TrimSpace(buildMeta.buildDate); s != "" {
-				_, _ = fmt.Fprintf(out, "build date:  %s\n", s)
-			}
-			_, _ = fmt.Fprintf(out, "go version:  %s\n", runtime.Version())
-			_, _ = fmt.Fprintf(out, "platform:    %s/%s\n", runtime.GOOS, runtime.GOARCH)
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), line)
+			return err
 		},
 	}
+	cmd.Flags().Bool("json", false, "Print the version as one JSON object")
+	return cmd
 }
 
 // Execute runs the root command and returns the process exit code (main should call os.Exit).

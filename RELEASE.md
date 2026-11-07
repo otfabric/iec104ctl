@@ -1,5 +1,32 @@
 # iec104ctl Releases
 
+## v0.7.0
+
+**Date:** 2026-11-07
+**Previous release:** v0.6.0
+
+### Summary
+
+`version` prints one line, the same in every OT Fabric CLI, and `version --json` one JSON object; shell completion now covers every flag and argument.
+
+### Changed
+
+- **`version` output:** one line, `iec104ctl 0.7.0 (tag v0.7.0, commit <full sha>, built <date>, go-iec104 0.2.0, go1.26.x, linux/amd64)`; a build without a tag leaves out the tag part, and a build without injected metadata (`go build`, `go install`) reports the module version of a release or `dev`, and the VCS revision (with `-dirty`) the toolchain recorded. Was a multi-line `iec104ctl version: …` block.
+- **`version --json`** (new): one JSON line with the keys `name`, `version`, `tag`, `commit`, `built`, `libraries` (`name`, `version` of each OT Fabric library), `go`, `platform`, in that order and always present (docs/json-output.md). `IEC104CTL_FORMAT=json` prints the same.
+- **Shell completion** (bash, zsh, fish, PowerShell) of every flag that takes a value: new value completion for `--ca-size`, `--cot-size` and `--ioa-size` of the client and server commands; files of their type for the file flags, and no file names for addresses, numbers and other free values. The arguments of commands that take none complete no file names either.
+- **Makefile:** injects the version and tag only when HEAD is exactly on a tag (any other build reports `dev`), the version without the leading `v`, and the full commit SHA, as the release workflow does.
+
+### Upgrade notes
+
+- A script that parsed the old multi-line `version` output should read `version --json` instead.
+
+### Tests
+
+- Version line with and without a tag, development fallback, JSON key order and values, `--json` and `IEC104CTL_FORMAT`.
+- `__complete` for the four shells and for flags of every command group; a walk of the command tree fails for a flag that takes a value without completion, and for one whose usage lists values that completes none.
+
+---
+
 ## v0.6.0
 
 **Date:** 2026-11-04

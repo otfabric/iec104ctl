@@ -30,7 +30,7 @@ From source (Go 1.26+): `go install github.com/otfabric/iec104ctl@latest`
 
 ### Shell completion
 
-Flags with a fixed set of values complete to those values, **`--type`** to the type names.
+Flags with a fixed set of values complete to those values, **`--type`** to the type names, file flags to files of their type, and addresses and numbers to no file names.
 
 ```bash
 # bash (needs the bash-completion package)
@@ -207,7 +207,7 @@ iec104ctl
 │   └── generate-config  Write an example station model
 ├── discover             Find IEC 60870-5-104 stations on subnets
 ├── completion           Generate shell completion script (bash|zsh|fish|powershell)
-└── version              Print version
+└── version              Print the version line (--json: one JSON line)
 ```
 
 ---
@@ -257,7 +257,7 @@ iec104ctl server start
 iec104ctl server generate-config
 
 iec104ctl discover
-iec104ctl version
+iec104ctl version [--json]
 ```
 
 Every command has `--help`, with a description and examples.
