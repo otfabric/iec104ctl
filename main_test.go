@@ -37,7 +37,7 @@ func TestMainHandsBuildMetaToTheCommands(t *testing.T) {
 	t.Cleanup(func() { version = old })
 	version = "9.9.9-test"
 	code, out := runMain(t, "version")
-	if code != 0 || !strings.Contains(out, "9.9.9-test") {
+	if code != 0 || !strings.HasPrefix(out, "iec104ctl 9.9.9-test (") {
 		t.Fatalf("exit %d, stdout %q", code, out)
 	}
 }
