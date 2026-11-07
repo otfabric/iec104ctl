@@ -28,6 +28,28 @@ Linux (amd64, arm64, armv7), macOS (Intel, Apple silicon) and Windows (amd64, ar
 
 From source (Go 1.26+): `go install github.com/otfabric/iec104ctl@latest`
 
+### Shell completion
+
+Flags with a fixed set of values complete to those values, **`--type`** to the type names.
+
+```bash
+# bash (needs the bash-completion package)
+mkdir -p ~/.local/share/bash-completion/completions
+iec104ctl completion bash > ~/.local/share/bash-completion/completions/iec104ctl
+
+# zsh: a directory on your fpath, then restart the shell
+mkdir -p ~/.zsh/completions && iec104ctl completion zsh > ~/.zsh/completions/_iec104ctl
+# and once in ~/.zshrc:  fpath=(~/.zsh/completions $fpath); autoload -U compinit && compinit
+
+# fish
+mkdir -p ~/.config/fish/completions && iec104ctl completion fish > ~/.config/fish/completions/iec104ctl.fish
+```
+
+```powershell
+# PowerShell: add this line to your profile ($PROFILE)
+iec104ctl completion powershell | Out-String | Invoke-Expression
+```
+
 ---
 
 ## Why iec104ctl?
@@ -261,8 +283,6 @@ Every command has `--help`, with a description and examples.
 | 130 | Interrupted before a result |
 
 See [docs/exitcodes.md](docs/exitcodes.md) for the details and the `code` values.
-
-**Shell completion:** `iec104ctl completion bash` (or `zsh`, `fish`, `powershell`) prints a completion script; for example `source <(iec104ctl completion bash)`. Flags with a fixed set of values complete to those values, **`--type`** to the type names.
 
 ### Connecting to a station
 
