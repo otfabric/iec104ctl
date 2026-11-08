@@ -1,5 +1,16 @@
 # iec104ctl Releases
 
+## v0.7.1
+
+**Date:** 2026-11-08
+**Previous release:** v0.7.0
+
+### Changed
+
+- Release binaries are built with the latest Go 1.26 patch release; v0.7.0 was built with go1.26.0.
+
+---
+
 ## v0.7.0
 
 **Date:** 2026-11-07
