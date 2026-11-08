@@ -1,5 +1,19 @@
 # iec104ctl Releases
 
+## v0.8.0
+
+**Date:** 2026-11-08
+**Previous release:** v0.7.1
+
+### Changed
+
+- Built on go-iec104 v0.3.0, whose decoders, client and server were checked against recorded IEC 104 traffic (CERT.LV traces, the UOWM dataset, Wireshark's coverage capture; software or virtual RTUs, no hardware claim).
+- `interrogate` also returns the parameters of measured values (P_ME_NA_1 to P_ME_NC_1) that a station sends in answer to an interrogation; they used to be dropped.
+- File upload succeeds with stations that call the file with section number 1; it used to fail with a protocol error.
+- `station`: a clock-synchronisation confirmation mirrors a day of week of 0 as 0; it used to fill in the date's weekday.
+
+---
+
 ## v0.7.1
 
 **Date:** 2026-11-08
